@@ -4,3 +4,4 @@ pyqt-distutils==0.7.3
 PyQt5==5.9.2
 QScintilla==2.10.2
 sip==4.19.6
+pre-commit
