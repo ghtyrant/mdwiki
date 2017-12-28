@@ -24,3 +24,6 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Ignore generated ui files
+mdwiki/gui/*.py

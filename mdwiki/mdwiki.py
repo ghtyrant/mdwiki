@@ -1,71 +1,109 @@
+import os
+from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QFileInfo, QSettings
-from PyQt5.QtWidgets import QMainWindow, qApp, QAction
+from PyQt5.QtWidgets import QMainWindow, qApp, QFileDialog, QMessageBox, QTreeWidgetItem
 
 from .gui.mdwiki_ui import Ui_MainWindow
 
+from .mixins.recent_files import RecentFilesMixin
+from .mixins.markdown_editor import MarkdownEditorMixin
 
-class MDWiki(QMainWindow, Ui_MainWindow):
-    AUTHOR = 'skyr'
-    APPLICATION = 'MDWiki'
-    MAX_RECENT_FILES = 5
+from .backend.wiki import Wiki
+
+
+class ArticleViewModel(QTreeWidgetItem):
+    def __init__(self, wiki_vm, article, parent, icon=None):
+        super().__init__(parent, [article.get_name()])
+
+        self.wiki_vm = wiki_vm
+        self.model = article
+        self.parent = parent
+
+        if icon:
+            self.setIcon(0, icon)
+        elif self.model.children:
+            self.setIcon(0, QIcon.fromTheme('default-fileopen'))
+        else:
+            self.setIcon(0, QIcon.fromTheme('application-document'))
+
+
+class WikiViewModel:
+    def __init__(self, wiki, root):
+        self.wiki = wiki
+        self.setup_ui(root)
+
+    def setup_ui(self, root):
+        self.root_article_vm = ArticleViewModel(self,
+                                                self.wiki.get_root(),
+                                                root,
+                                                QIcon.fromTheme('blue-folder-books'))
+
+        self.add_children(self.root_article_vm)
+
+    def add_children(self, root_article_vm):
+        for child in root_article_vm.model.children:
+            article_vm = ArticleViewModel(self, child, root_article_vm)
+            self.add_children(article_vm)
+
+
+class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin):
+    ORG_NAME = 'skyr'
+    ORG_DOMAIN = 'skyr.at'
+    APP_NAME = 'MDWiki'
 
     def __init__(self, *args, **kwargs):
+        QCoreApplication.setOrganizationName(MDWiki.ORG_NAME)
+        QCoreApplication.setOrganizationDomain(MDWiki.ORG_DOMAIN)
+        QCoreApplication.setApplicationName(MDWiki.APP_NAME)
+
         super().__init__(*args, **kwargs)
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
 
-        self.recent_wikis_actions = []
-
-        self.setupUi(self)
+        self.setup_recent_files()
+        self.setup_markdown_editor()
         self.setup_connections()
-        self.setup_recent_wikis_menu()
-        self.update_recent_wikis()
+
+        self.wikis = {}
+        self.current_article_vm = None
 
     def setup_connections(self):
         # Application Menu
-        self.actionQuit.triggered.connect(qApp.quit)
+        self.ui.actionQuit.triggered.connect(qApp.quit)
+        self.ui.actionOpen.triggered.connect(self.open_wiki)
 
-    def open_recent_wiki(self):
-        action = self.sender()
-        if action:
-            print(action.data())
+        self.ui.wikiTree.itemClicked.connect(self.item_clicked)
 
-    def set_current_wiki(self, path):
-        settings = QSettings(MDWiki.AUTHOR, MDWiki.APPLICATION)
-        files = settings.value('recentFileList', [])
+    def close_wiki(self, wiki):
+        self.ui.wikiTree.removeChild(wiki.item)
+        del self.wikis[wiki.path]
+        wiki.close()
 
-        try:
-            files.remove(path)
-        except ValueError:
-            pass
+    def show_open_wiki_dialog(self):
+        path = str(QFileDialog.getExistingDirectory(self, 'Select Directory'))
 
-        files.insert(0, path)
-        del files[MDWiki.MAX_RECENT_FILES:]
+        while True:
+            if not os.path.exists(os.path.join(path, '.git')):
+                QMessageBox.information(
+                    self, 'Wrong path', 'This folder does not contain a valid wiki!')
 
-        settings.setValue('recentFileList', files)
+                continue
 
-    def setup_recent_wikis_menu(self):
-        icon = QIcon.fromTheme("folder")
+            break
 
-        for i in range(MDWiki.MAX_RECENT_FILES):
-            self.recent_wikis_actions.append(QAction(self, visible=False, icon=icon,
-                                                     triggered=self.open_recent_wiki))
+        if not path:
+            return
 
-        for action in self.recent_wikis_actions:
-            self.menuRecentWikis.addAction(action)
+        self.open_wiki(path)
 
-    def update_recent_wikis(self):
-        settings = QSettings(MDWiki.AUTHOR, MDWiki.APPLICATION)
-        files = settings.value('recentFileList', [])
+    def open_wiki(self, path):
+        # If this wiki is already open, reopen it
+        if path in self.wikis:
+            self.close_wiki(self.wikis[path])
 
-        num_recent_files = min(len(files), MDWiki.MAX_RECENT_FILES)
+        self.wikis[path] = WikiViewModel(Wiki.open(path), self.ui.wikiTree)
 
-        for i in range(num_recent_files):
-            text = "&%d %s" % (i + 1, QFileInfo(files[i]).fileName())
-            print(text)
-            self.recent_wikis_actions[i].setText(text)
-            self.recent_wikis_actions[i].setData(files[i])
-            self.recent_wikis_actions[i].setVisible(True)
+        self.add_recent_wiki(path)
 
-        for j in range(num_recent_files, MDWiki.MAX_RECENT_FILES):
-            print("%d is not visible" % j)
-            self.recent_wikis_actions[j].setVisible(False)
+    def item_clicked(self, item):
+        self.load_article(item)

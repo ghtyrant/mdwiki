@@ -28,7 +28,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QTreeView" name="treeView">
+       <widget class="QTreeWidget" name="wikiTree">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
           <horstretch>0</horstretch>
@@ -41,6 +41,14 @@
           <height>0</height>
          </size>
         </property>
+        <attribute name="headerVisible">
+         <bool>false</bool>
+        </attribute>
+        <column>
+         <property name="text">
+          <string notr="true">1</string>
+         </property>
+        </column>
        </widget>
       </item>
       <item>
@@ -113,7 +121,7 @@
           <property name="childrenCollapsible">
            <bool>true</bool>
           </property>
-          <widget class="QsciScintilla" name="textEdit">
+          <widget class="QsciScintilla" name="markdownEditor">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Ignored" vsizetype="Expanding">
              <horstretch>0</horstretch>
@@ -127,7 +135,7 @@
             <string/>
            </property>
           </widget>
-          <widget class="QWebEngineView" name="webView">
+          <widget class="QWebEngineView" name="markdownPreview">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -296,7 +304,8 @@
   </action>
   <action name="actionQuit">
    <property name="icon">
-    <iconset theme="system-shutdown"/>
+    <iconset theme="system-shutdown">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Quit</string>
@@ -304,7 +313,8 @@
   </action>
   <action name="actionNewWiki">
    <property name="icon">
-    <iconset theme="folder-new"/>
+    <iconset theme="folder-new">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>New Wiki ...</string>
@@ -312,7 +322,8 @@
   </action>
   <action name="actionOpen">
    <property name="icon">
-    <iconset theme="folder-open"/>
+    <iconset theme="folder-open">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Open ...</string>
