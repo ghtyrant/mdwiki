@@ -27,3 +27,6 @@ MANIFEST
 
 # Ignore generated ui files
 mdwiki/gui/*.py
+
+# Virtualenv
+.venv
