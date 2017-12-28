@@ -1,20 +1,17 @@
-import os
 from abc import ABC, abstractmethod
 import markdown
 
-from .constants import APP_DATA_BASE_PATHS
 from .util import CursorExtension
 
 
 class MarkupRenderer(ABC):
-    def __init__(self, name, file_type, language_id="plain"):
+    def __init__(self, name, file_type):
         self.name = name
         self.file_type = file_type
-        self.language_id = language_id
         self.tree_iter = None
 
     @abstractmethod
-    def render(self, raw_text):
+    def render(self, raw_text, style=""):
         pass
 
     def get_tree_iter(self):
@@ -29,13 +26,10 @@ class MarkupRenderer(ABC):
     def get_file_type(self):
         return self.file_type
 
-    def get_language_id(self):
-        return self.language_id
-
 
 class PlainRenderer(MarkupRenderer):
     def __init__(self):
-        super().__init__("Plaintext", ".txt", "plain")
+        super().__init__("Plaintext", ".txt")
 
     def render(self, raw_text):
         return raw_text
@@ -54,7 +48,7 @@ class MarkdownRenderer(MarkupRenderer):
     ]
 
     def __init__(self):
-        super().__init__("Markdown", ".md", "markdown")
+        super().__init__("Markdown", ".md")
 
         self.markdown = markdown.Markdown(
             extensions=MarkdownRenderer.MARKDOWN_EXTENSIONS,
@@ -67,23 +61,7 @@ class MarkdownRenderer(MarkupRenderer):
                 }
             })
 
-        self.style = ""
-        for path in APP_DATA_BASE_PATHS:
-            full_path = os.path.join(path, "styles", "github.css")
-
-            if not os.path.exists(full_path):
-                continue
-
-            print("Loading style 'github' from path %s" % (full_path))
-
-            with open(full_path, "r") as stream:
-                self.style = stream.read()
-                break
-
-        if not self.style:
-            print("Could not load style 'github.css'!")
-
-    def render(self, raw_text):
+    def render(self, raw_text, style=''):
         # BUG pymdownx.github fails to clean its state after each call, causing convert()
         # to use more and more resources with each call, slowing things down to a crawl
         # see https://github.com/facelessuser/pymdown-extensions/issues/15
@@ -91,7 +69,7 @@ class MarkdownRenderer(MarkupRenderer):
         md = markdown.Markdown(extensions=MarkdownRenderer.MARKDOWN_EXTENSIONS)
         text = md.convert(raw_text)
         return MarkdownRenderer.HTML_SKELETON % (
-            self.style,
+            style,
             text
         )
 
@@ -102,9 +80,9 @@ class ReSTRenderer(MarkupRenderer):
     )
 
     def __init__(self):
-        super().__init__("Restructured Text", ".rst", "rest")
+        super().__init__("Restructured Text", ".rst")
 
-    def render(self, raw_text):
+    def render(self, raw_text, style=''):
         from docutils.core import publish_parts
         return ReSTRenderer.HTML_SKELETON % (
             publish_parts(raw_text, writer_name='html')['html_body']

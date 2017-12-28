@@ -22,8 +22,8 @@
         <property name="toolButtonStyle">
          <enum>Qt::ToolButtonIconOnly</enum>
         </property>
-        <addaction name="actionNew"/>
-        <addaction name="actionDelete"/>
+        <addaction name="actionNewArticle"/>
+        <addaction name="actionDeleteArticle"/>
         <addaction name="actionSync"/>
        </widget>
       </item>
@@ -41,12 +41,34 @@
           <height>0</height>
          </size>
         </property>
+        <property name="indentation">
+         <number>10</number>
+        </property>
+        <property name="columnCount">
+         <number>3</number>
+        </property>
         <attribute name="headerVisible">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="headerDefaultSectionSize">
+         <number>250</number>
+        </attribute>
+        <attribute name="headerStretchLastSection">
          <bool>false</bool>
         </attribute>
         <column>
          <property name="text">
           <string notr="true">1</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string notr="true">2</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string notr="true">3</string>
          </property>
         </column>
        </widget>
@@ -86,11 +108,29 @@
          <layout class="QHBoxLayout" name="toolBarLayout">
           <item>
            <widget class="QToolBar" name="toolBar">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="movable">
+             <bool>false</bool>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>24</width>
+              <height>24</height>
+             </size>
+            </property>
             <property name="toolButtonStyle">
              <enum>Qt::ToolButtonIconOnly</enum>
             </property>
-            <addaction name="actionBack"/>
-            <addaction name="actionForward"/>
+            <property name="floatable">
+             <bool>false</bool>
+            </property>
+            <addaction name="actionUndo"/>
+            <addaction name="actionRedo"/>
             <addaction name="actionactionFullscreen"/>
             <addaction name="separator"/>
             <addaction name="actionEdit"/>
@@ -99,15 +139,18 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="uncommitedWarningLabel">
+           <widget class="QLabel" name="uncommittedWarningLabel">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
             <property name="text">
-             <string>TextLabel</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600; color:#cc0000;&quot;&gt;This article has uncommited changes!&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -151,16 +194,6 @@
          </widget>
         </item>
        </layout>
-       <widget class="QWidget" name="layoutWidget" native="true">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>0</y>
-          <width>284</width>
-          <height>41</height>
-         </rect>
-        </property>
-       </widget>
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
@@ -173,7 +206,7 @@
        </attribute>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
-         <widget class="QsciScintilla" name="textEdit_2">
+         <widget class="QsciScintilla" name="htmlPreview">
           <property name="toolTip">
            <string/>
           </property>
@@ -215,21 +248,18 @@
    <addaction name="menuFile"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionBack">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
+  <action name="actionUndo">
    <property name="icon">
-    <iconset theme="back">
+    <iconset theme="undo">
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Back</string>
    </property>
   </action>
-  <action name="actionForward">
+  <action name="actionRedo">
    <property name="icon">
-    <iconset theme="forward">
+    <iconset theme="redo">
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
@@ -275,7 +305,7 @@
     <string>Commit</string>
    </property>
   </action>
-  <action name="actionNew">
+  <action name="actionNewArticle">
    <property name="icon">
     <iconset theme="document-new">
      <normaloff>.</normaloff>.</iconset>
@@ -284,7 +314,7 @@
     <string>New</string>
    </property>
   </action>
-  <action name="actionDelete">
+  <action name="actionDeleteArticle">
    <property name="icon">
     <iconset theme="stock_delete">
      <normaloff>.</normaloff>.</iconset>
@@ -342,6 +372,8 @@
    <header location="global">QtWebEngineWidgets/QWebEngineView</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../rc/main.qrc"/>
+ </resources>
  <connections/>
 </ui>

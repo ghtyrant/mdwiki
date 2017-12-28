@@ -1,4 +1,5 @@
 import os
+import sys
 from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, qApp, QFileDialog, QMessageBox, QTreeWidgetItem
@@ -7,6 +8,7 @@ from .gui.mdwiki_ui import Ui_MainWindow
 
 from .mixins.recent_files import RecentFilesMixin
 from .mixins.markdown_editor import MarkdownEditorMixin
+from .mixins.wiki_tree import WikiTreeMixin
 
 from .backend.wiki import Wiki
 
@@ -25,6 +27,20 @@ class ArticleViewModel(QTreeWidgetItem):
             self.setIcon(0, QIcon.fromTheme('default-fileopen'))
         else:
             self.setIcon(0, QIcon.fromTheme('application-document'))
+
+        self.set_unstaged(self.model.has_unstaged_changes())
+
+    def set_unstaged(self, flag):
+        if flag:
+            self.setIcon(2, QIcon.fromTheme('dialog-warning'))
+        else:
+            self.setIcon(2, QIcon())
+
+    def set_unsaved(self, flag):
+        if flag:
+            self.setIcon(1, QIcon.fromTheme('document-edit'))
+        else:
+            self.setIcon(1, QIcon())
 
 
 class WikiViewModel:
@@ -46,7 +62,7 @@ class WikiViewModel:
             self.add_children(article_vm)
 
 
-class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin):
+class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
     ORG_NAME = 'skyr'
     ORG_DOMAIN = 'skyr.at'
     APP_NAME = 'MDWiki'
@@ -60,8 +76,13 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
+        self.setup_ui_hacks()
+
+        # Set up mixins
         self.setup_recent_files()
         self.setup_markdown_editor()
+        self.setup_wiki_tree()
+
         self.setup_connections()
 
         self.wikis = {}
@@ -72,7 +93,14 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin):
         self.ui.actionQuit.triggered.connect(qApp.quit)
         self.ui.actionOpen.triggered.connect(self.open_wiki)
 
-        self.ui.wikiTree.itemClicked.connect(self.item_clicked)
+    def setup_ui_hacks(self):
+        # Force equal division of QSplitter panes
+        self.ui.splitter.setSizes([sys.maxsize, sys.maxsize])
+
+        # Set column width of wiki tree
+        self.ui.wikiTree.header().resizeSection(0, 250)
+        self.ui.wikiTree.header().resizeSection(1, 24)
+        self.ui.wikiTree.header().resizeSection(2, 24)
 
     def close_wiki(self, wiki):
         self.ui.wikiTree.removeChild(wiki.item)
@@ -104,6 +132,3 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin):
         self.wikis[path] = WikiViewModel(Wiki.open(path), self.ui.wikiTree)
 
         self.add_recent_wiki(path)
-
-    def item_clicked(self, item):
-        self.load_article(item)

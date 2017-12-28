@@ -14,14 +14,6 @@ ICON_REPOSITORY = 'accessories-dictionary'
 ICON_STATUS_CHANGES = 'dialog-warning'
 
 
-def updates_ui(func):
-    def wrapper(self, *args, **kwargs):
-        func(self, *args, **kwargs)
-        if self.tree_iter:
-            self.update_ui()
-    return wrapper
-
-
 class ArticleHistoryEntry:
     def __init__(self, article, commit):
         self.article = article
@@ -76,6 +68,7 @@ class Article:
         self.history = []
 
         self.text = ""
+        self.modified = False
 
         self.changed_files = set()
 
@@ -104,6 +97,9 @@ class Article:
         return self.parent
 
     def set_text(self, text):
+        if text != self.text:
+            self.modified = True
+
         self.text = text
 
     def get_text(self):
@@ -111,7 +107,6 @@ class Article:
             self.text = self.read()
         return self.text
 
-    @updates_ui
     def set_name(self, name):
         self.name = name
 
@@ -204,7 +199,6 @@ class Article:
         else:
             return ""  # self.get_file_name()
 
-    @updates_ui
     def add_child(self, article):
         """ This adds a child to this article, turning it into a category if it isn't one already. """
         # This is the first child, convert to category!
@@ -213,7 +207,6 @@ class Article:
 
         self.children.append(article)
 
-    @updates_ui
     def remove_child(self, article):
         self.children.remove(article)
 
@@ -244,7 +237,6 @@ class Article:
     def has_children(self):
         return len(self.children) > 0
 
-    @updates_ui
     def move(self, name, parent=None):
         if parent is None:
             parent = self.get_parent()
@@ -501,9 +493,8 @@ class Article:
         with GitFile(physical_path) as stream:
             return stream.read().decode('utf-8')
 
-    @updates_ui
-    def write(self, text):
-        """ Read and return the contents of our physical file. """
+    def write(self):
+        """ Write the contents of our physical file. """
         physical_path = self.get_absolute_physical_path()
 
         self.add_changed_file(self.get_physical_path())
@@ -514,12 +505,12 @@ class Article:
                 self.get_physical_path(), self.get_index_file_name()))
 
         with GitFile(physical_path, mode="wb") as stream:
-            stream.write(text.encode('utf-8'))
-
-        self.text = text
+            stream.write(self.text.encode('utf-8'))
 
         # We wrote the changes, update the repository's list of unstaged changes
         self.get_repository().fetch_unstaged_changes()
+
+        self.modified = False
 
     def load_history(self):
         """ Load our commit history. """
@@ -532,7 +523,6 @@ class Article:
         except KeyError as e:
             pass
 
-    @updates_ui
     def commit(self, message="", commit_children=False):
         """ Commit changes to the git repository. Also can commit all of its children recursively. """
         if not message:

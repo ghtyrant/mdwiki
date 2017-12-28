@@ -3,6 +3,10 @@
         [
             "mdwiki/gui/*.ui",
             "mdwiki/gui"
+        ],
+        [
+            "mdwiki/rc/*.qrc",
+            "mdwiki/gui"
         ]
     ],
     "hooks": [],

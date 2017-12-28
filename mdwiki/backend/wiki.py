@@ -191,8 +191,8 @@ class Wiki:
         """ Fetch the current list of unstaged changes from git. """
         self.unstaged_changes = []
         try:
-            for x in get_unstaged_changes(self.git_repository.open_index(), self.path):
-                self.unstaged_changes.append(x.decode('utf-8'))
+            for change in get_unstaged_changes(self.git_repository.open_index(), self.path):
+                self.unstaged_changes.append(change.decode('utf-8'))
         except FileNotFoundError:
             pass
 
