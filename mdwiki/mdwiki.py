@@ -1,19 +1,17 @@
 import os
 import sys
 from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMainWindow, qApp, QFileDialog, QMessageBox, QTreeWidgetItem
+from PyQt5.QtWidgets import QMainWindow, qApp, QFileDialog, QMessageBox
 
 from .gui.mdwiki_ui import Ui_MainWindow
 
 from .mixins.recent_files import RecentFilesMixin
 from .mixins.markdown_editor import MarkdownEditorMixin
-from .mixins.wiki_tree import WikiTreeMixin
+from .mixins.wiki_tree import WikiTreeMixin, WikiTreeModel
 
 from .backend.wiki import Wiki
 
-
-class ArticleViewModel(QTreeWidgetItem):
+"""class ArticleViewModel(QTreeWidgetItem):
     def __init__(self, wiki_vm, article, parent, icon=None):
         super().__init__(parent, [article.get_name()])
 
@@ -60,6 +58,7 @@ class WikiViewModel:
         for child in root_article_vm.model.children:
             article_vm = ArticleViewModel(self, child, root_article_vm)
             self.add_children(article_vm)
+"""
 
 
 class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
@@ -97,11 +96,6 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
         # Force equal division of QSplitter panes
         self.ui.splitter.setSizes([sys.maxsize, sys.maxsize])
 
-        # Set column width of wiki tree
-        self.ui.wikiTree.header().resizeSection(0, 250)
-        self.ui.wikiTree.header().resizeSection(1, 24)
-        self.ui.wikiTree.header().resizeSection(2, 24)
-
     def close_wiki(self, wiki):
         self.ui.wikiTree.removeChild(wiki.item)
         del self.wikis[wiki.path]
@@ -129,6 +123,20 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
         if path in self.wikis:
             self.close_wiki(self.wikis[path])
 
-        self.wikis[path] = WikiViewModel(Wiki.open(path), self.ui.wikiTree)
+        wiki = Wiki.open(path)
+        self.wikis[path] = WikiTreeModel(['name', 'saved', 'unstaged'], wiki)
+
+        self.ui.wikiTree.setModel(self.wikis[path])
+
+        # Set column width of wiki tree
+        self.ui.wikiTree.header().resizeSection(0, 250)
+        self.ui.wikiTree.header().resizeSection(1, 24)
+        self.ui.wikiTree.header().resizeSection(2, 24)
+
+        name = wiki.name
+        if not name:
+            name = 'Unnamed'
+
+        self.ui.wikiName.setText(name)
 
         self.add_recent_wiki(path)

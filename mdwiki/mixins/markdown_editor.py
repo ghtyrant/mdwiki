@@ -34,30 +34,29 @@ class MarkdownEditorMixin:
         style_file.open(QIODevice.ReadOnly)
         self.style = QTextStream(style_file).readAll()
 
-        self.current_article_vm = None
-        self.update_toolbar()
+        self.current_article = None
         self.ui.markdownEditor.hide()
 
         self.ui.actionUndo.setEnabled(False)
         self.ui.actionRedo.setEnabled(False)
+
+        self.update_toolbar()
 
     def update_toolbar(self):
         self.ui.actionSave.setEnabled(False)
         self.ui.actionCommit.setEnabled(False)
         self.ui.uncommittedWarningLabel.hide()
 
-        if self.current_article_vm:
-            self.current_article_vm.set_unsaved(False)
-            self.current_article_vm.set_unstaged(False)
+        if self.current_article:
 
-            if self.current_article_vm.model.modified:
+            if self.current_article.modified:
                 self.ui.actionSave.setEnabled(True)
-                self.current_article_vm.set_unsaved(True)
 
-            if self.current_article_vm.model.has_unstaged_changes():
+            if self.current_article.has_unstaged_changes():
                 self.ui.actionCommit.setEnabled(True)
                 self.ui.uncommittedWarningLabel.show()
-                self.current_article_vm.set_unstaged(True)
+
+            self.ui.wikiTree.model().updateItem(self.current_article_index)
 
     def edit_toggled(self, enabled):
         if enabled:
@@ -69,7 +68,7 @@ class MarkdownEditorMixin:
         self.renderers[renderer.get_file_type()] = renderer
 
     def text_changed(self):
-        self.current_article_vm.model.set_text(self.ui.markdownEditor.text())
+        self.current_article.set_text(self.ui.markdownEditor.text())
         self.ui.actionUndo.setEnabled(True)
 
         self.update_toolbar()
@@ -96,10 +95,10 @@ class MarkdownEditorMixin:
 
         # Render and update the preview
         page = self.ui.markdownPreview.page()
-        if self.current_article_vm.model.file_type not in self.renderers:
+        if self.current_article.file_type not in self.renderers:
             renderer = self.fallback_renderer
         else:
-            renderer = self.renderers[self.current_article_vm.model.file_type]
+            renderer = self.renderers[self.current_article.file_type]
 
         html = renderer.render(text, style=self.style)
         page.setHtml(html + MarkdownEditorMixin.SCROLLING_JS)
@@ -108,7 +107,7 @@ class MarkdownEditorMixin:
         # setHtml() steals focus from the editor - give it back
         self.ui.markdownEditor.setFocus()
 
-    def load_article(self, article_vm):
+    def load_article(self, article):
         # Disconnect any signals while changing article
         try:
             self.ui.markdownEditor.textChanged.disconnect(self.text_changed)
@@ -117,8 +116,8 @@ class MarkdownEditorMixin:
         except TypeError:
             pass
 
-        self.current_article_vm = article_vm
-        self.ui.markdownEditor.setText(article_vm.model.get_text())
+        self.current_article = article
+        self.ui.markdownEditor.setText(article.get_text())
 
         self.update_toolbar()
 
@@ -135,12 +134,12 @@ class MarkdownEditorMixin:
         self.cursor_changed(0, 0)
 
     def save_article(self):
-        self.current_article_vm.model.write()
+        self.current_article.write()
         self.update_toolbar()
 
     def commit_article(self):
-        self.current_article_vm.model.write()
-        self.current_article_vm.model.commit()
+        self.current_article.write()
+        self.current_article.commit()
         self.update_toolbar()
 
     def undo(self):
