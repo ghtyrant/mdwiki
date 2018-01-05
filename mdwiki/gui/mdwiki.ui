@@ -231,7 +231,7 @@
      <x>0</x>
      <y>0</y>
      <width>1078</width>
-     <height>22</height>
+     <height>14</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -370,6 +370,14 @@
    </property>
    <property name="text">
     <string>Edit Wiki</string>
+   </property>
+  </action>
+  <action name="actionEditArticle">
+   <property name="icon">
+    <iconset theme="document-edit"/>
+   </property>
+   <property name="text">
+    <string>Edit</string>
    </property>
   </action>
  </widget>

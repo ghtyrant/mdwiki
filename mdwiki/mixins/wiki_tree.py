@@ -1,6 +1,8 @@
+from functools import partial
+
 from PyQt5.QtCore import QAbstractItemModel, QModelIndex, Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import QDialog, QMenu
 
 from ..gui.new_article_ui import Ui_NewArticleDialog
 
@@ -16,6 +18,8 @@ class ArticleViewModel:
         self.childItems.append(item)
 
     def child(self, row):
+        print('model: %s self.child(%d) len: %d' % (
+            'root' if not self.model else self.model.name, row, len(self.childItems)))
         return self.childItems[row]
 
     def childCount(self):
@@ -195,6 +199,12 @@ class WikiTreeModel(QAbstractItemModel):
 
         return success
 
+    def moveArticle(self, old_parent_index, article_index, parent_index):
+        print('destinationChild: %d' % (self.rowCount(parent_index) + 1))
+        self.beginMoveRows(old_parent_index, article_index.row(
+        ), article_index.row(), parent_index, self.rowCount(parent_index) - 1)
+        self.endMoveRows()
+
     def rowCount(self, parent=QModelIndex()):
         parentItem = self.getItem(parent)
 
@@ -229,30 +239,86 @@ class WikiTreeModel(QAbstractItemModel):
 
         self.dataChanged.emit(index_left, index_right)
 
+    def findData(self, data):
+        index = self.match(self.index(0, 0),
+                           Qt.EditRole,
+                           data,
+                           2,
+                           Qt.MatchRecursive)
+
+        print(index)
+
+        return None if not index else index[0]
+
     def setupModelData(self, wiki):
         def add_article(article, parent):
+            article_vm = ArticleViewModel(article, parent)
+            parent.appendChild(article_vm)
+
             for child in article.children:
-                vm = ArticleViewModel(child, parent)
-                parent.appendChild(vm)
-                add_article(child, vm)
+                add_article(child, article_vm)
 
         add_article(wiki.get_root(), self.rootItem)
 
 
 class NewArticleDialog(QDialog, Ui_NewArticleDialog):
-    def __init__(self, parent, renderers):
+    def __init__(self, parent, wiki_tree_model, renderers, article=None):
         super().__init__(parent)
 
+        self.article = article
+
         self.setupUi(self)
+        self.parent.setModel(wiki_tree_model)
+        self.setup_ui_hacks()
 
         for file_type, renderer in renderers.items():
             self.type.addItem(QIcon(), renderer.name, renderer.file_type)
+
+        if self.article is None:
+            index = self.type.findData(wiki_tree_model.model.default_file_type)
+
+            # Select wiki root
+            self.parent.setCurrentIndex(wiki_tree_model.index(0, 0))
+        else:
+            index = self.type.findData(article.file_type)
+            self.name.setText(self.article.name)
+
+            # Find parent article in tree model
+            parent_index = wiki_tree_model.findData(article.parent)
+
+            self.parent.setCurrentIndex(parent_index)
+
+        if index == -1:
+            return
+
+        self.type.setCurrentIndex(index)
+
+    def setup_ui_hacks(self):
+        self.parent.hideColumn(1)
+        self.parent.hideColumn(2)
+        self.parent.expandAll()
 
     def execute(self):
         return self.exec_()
 
     def get_data(self):
-        return (self.name.text(), self.type.currentData())
+        parent_index = self.parent.currentIndex()
+        parent = self.parent.model().data(parent_index, Qt.EditRole)
+        return (self.name.text(), self.type.currentData(), parent_index, parent)
+
+    def done(self, res):
+        if res != QDialog.Accepted:
+            super().done(res)
+
+            return
+
+        if not self.name.text().strip():
+            return
+
+        if self.parent.currentIndex() is None:
+            return
+
+        super().done(res)
 
 
 class WikiTreeMixin:
@@ -262,15 +328,59 @@ class WikiTreeMixin:
             self.show_new_article_dialog)
         self.current_article_index = None
 
+        self.ui.wikiTree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.ui.wikiTree.customContextMenuRequested.connect(
+            self.show_context_menu)
+
     def item_clicked(self, index):
         article = self.ui.wikiTree.model().data(index, Qt.EditRole)
         self.current_article_index = index
         self.load_article(article)
 
-    def show_new_article_dialog(self):
-        dialog = NewArticleDialog(self, self.renderers)
+    def show_new_article_dialog(self, article=None):
+        model = self.ui.wikiTree.model()
+        dialog = NewArticleDialog(self, model, self.renderers, article)
 
         if dialog.execute() != QDialog.Accepted:
             return
 
-        print(dialog.get_data())
+        (name, file_type, parent_index, parent) = dialog.get_data()
+
+        # Edit article
+        if article:
+            article.set_file_type(file_type)
+
+            old_parent = article.parent
+            article.move(name, parent)
+
+            # Move article in tree
+            if old_parent != parent:
+                old_parent_index = model.findData(old_parent)
+                article_index = model.findData(article)
+                model.moveArticle(old_parent_index,
+                                  article_index, parent_index)
+
+        # New article
+        else:
+            pass
+
+    def show_context_menu(self, pos):
+        index = self.ui.wikiTree.indexAt(pos)
+
+        if index is None:
+            return
+
+        article = self.ui.wikiTree.model().data(index, Qt.EditRole)
+
+        menu = QMenu()
+        menu.addAction(self.ui.actionEditArticle)
+
+        try:
+            self.ui.actionEditArticle.triggered.disconnect()
+        except TypeError:
+            pass
+
+        self.ui.actionEditArticle.triggered.connect(
+            partial(self.show_new_article_dialog, article))
+
+        menu.exec_(self.ui.wikiTree.viewport().mapToGlobal(pos))

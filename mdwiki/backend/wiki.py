@@ -19,7 +19,7 @@ dulwich.client.get_ssh_vendor = ParamikoSSHVendor
 class Wiki:
     def __init__(self, path, dulwich_repos=None):
         self.name = ""
-        self.default_file_type = ""
+        self.default_file_type = ".md"
         self.author_name = ""
         self.author_mail = ""
 

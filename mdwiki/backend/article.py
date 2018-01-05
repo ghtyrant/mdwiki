@@ -62,8 +62,6 @@ class Article:
         self.repository = repository
         self.is_directory = is_directory
 
-        self.tree_iter = None
-
         self.children = []
         self.history = []
 
@@ -144,9 +142,6 @@ class Article:
 
     def get_file_type(self):
         return self.file_type
-
-    def get_tree_iter(self):
-        return self.tree_iter
 
     def append_file_extension(self, name):
         return name + self.file_type
@@ -247,6 +242,7 @@ class Article:
 
         # Store current paths for later use
         old_wiki_url = self.get_wiki_url()
+        old_physical_path = self.get_physical_path()
         old_absolute_physical_path = self.get_absolute_physical_path()
 
         if parent != self.get_parent():
@@ -254,6 +250,11 @@ class Article:
 
         # Change our name
         self.name = name
+
+        # If this is simply a rename, add the old and the new name to the commit
+        if parent == self.get_parent():
+            self.add_changed_file(old_physical_path)
+            self.add_changed_file(self.get_physical_path())
 
         if parent != self.get_parent():
             # If the new parent isn't a folder yet, convert it
@@ -273,9 +274,6 @@ class Article:
             # ... and add us to the new one
             self.parent = parent
             self.get_parent().add_child(self)
-
-            # Remove ourself from the tree store
-            self.readd_to_treestore()
 
             self.add_changed_files(self.get_all_physical_paths())
 
@@ -424,8 +422,6 @@ class Article:
 
     def delete(self, commit=True):
         """ This deletes this article, its files on disk and recursively all of its descendants. """
-        self.remove_from_treestore()
-
         all_physical_paths = self.get_all_physical_paths()
         self.add_changed_files(all_physical_paths)
 
@@ -451,13 +447,6 @@ class Article:
         # Remove ourself from our parent's list
         if self.get_parent():
             self.get_parent().remove_child(self)
-
-    def get_article_icon_name(self):
-        """ Return which icon the tree view should display for us. """
-        if self.is_root():
-            return ICON_REPOSITORY
-
-        return ICON_FOLDER if self.has_children() else ICON_ARTICLE
 
     def dump(self, indent=0):
         """ For debugging: Print out ourself and our children. """
