@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>qmdwiki</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -27,6 +27,12 @@
         </property>
         <item>
          <widget class="QToolBar" name="treeToolBar">
+          <property name="iconSize">
+           <size>
+            <width>16</width>
+            <height>16</height>
+           </size>
+          </property>
           <property name="toolButtonStyle">
            <enum>Qt::ToolButtonIconOnly</enum>
           </property>
@@ -46,7 +52,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>TextLabel</string>
+           <string/>
           </property>
           <property name="alignment">
            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -72,6 +78,9 @@
         <property name="indentation">
          <number>10</number>
         </property>
+        <attribute name="headerVisible">
+         <bool>false</bool>
+        </attribute>
         <attribute name="headerStretchLastSection">
          <bool>false</bool>
         </attribute>
@@ -123,19 +132,19 @@
             </property>
             <property name="iconSize">
              <size>
-              <width>24</width>
-              <height>24</height>
+              <width>16</width>
+              <height>16</height>
              </size>
             </property>
             <property name="toolButtonStyle">
-             <enum>Qt::ToolButtonIconOnly</enum>
+             <enum>Qt::ToolButtonTextBesideIcon</enum>
             </property>
             <property name="floatable">
              <bool>false</bool>
             </property>
             <addaction name="actionUndo"/>
             <addaction name="actionRedo"/>
-            <addaction name="actionactionFullscreen"/>
+            <addaction name="actionFullscreen"/>
             <addaction name="separator"/>
             <addaction name="actionEdit"/>
             <addaction name="actionSave"/>
@@ -162,15 +171,24 @@
         </item>
         <item>
          <widget class="QSplitter" name="splitter">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="handleWidth">
+           <number>3</number>
           </property>
           <property name="childrenCollapsible">
            <bool>true</bool>
           </property>
           <widget class="QsciScintilla" name="markdownEditor">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Ignored" vsizetype="Expanding">
+            <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -182,18 +200,36 @@
             <string/>
            </property>
           </widget>
-          <widget class="QWebEngineView" name="markdownPreview">
+          <widget class="QFrame" name="frame">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
-           <property name="url">
-            <url>
-             <string>about:blank</string>
-            </url>
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
            </property>
+           <property name="frameShadow">
+            <enum>QFrame::Sunken</enum>
+           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <item>
+             <widget class="QWebEngineView" name="markdownPreview" native="true">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="url" stdset="0">
+               <url>
+                <string>about:blank</string>
+               </url>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </widget>
          </widget>
         </item>
@@ -231,7 +267,7 @@
      <x>0</x>
      <y>0</y>
      <width>1078</width>
-     <height>14</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -254,8 +290,8 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionUndo">
    <property name="icon">
-    <iconset theme="undo">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/arrow-180.png</normaloff>:/icons/arrow-180.png</iconset>
    </property>
    <property name="text">
     <string>Back</string>
@@ -263,20 +299,23 @@
   </action>
   <action name="actionRedo">
    <property name="icon">
-    <iconset theme="redo">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/arrow.png</normaloff>:/icons/arrow.png</iconset>
    </property>
    <property name="text">
     <string>Forward</string>
    </property>
   </action>
-  <action name="actionactionFullscreen">
+  <action name="actionFullscreen">
    <property name="icon">
-    <iconset theme="view-fullscreen">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/application-resize-full.png</normaloff>:/icons/application-resize-full.png</iconset>
    </property>
    <property name="text">
-    <string>actionFullscreen</string>
+    <string>Fullscreen</string>
+   </property>
+   <property name="toolTip">
+    <string>Fullscreen</string>
    </property>
   </action>
   <action name="actionEdit">
@@ -284,8 +323,8 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="edit">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/document--pencil.png</normaloff>:/icons/document--pencil.png</iconset>
    </property>
    <property name="text">
     <string>Edit</string>
@@ -293,17 +332,20 @@
   </action>
   <action name="actionSave">
    <property name="icon">
-    <iconset theme="filesave">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/disk.png</normaloff>:/icons/disk.png</iconset>
    </property>
    <property name="text">
     <string>Save</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
   </action>
   <action name="actionCommit">
    <property name="icon">
-    <iconset theme="dialog-apply">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/document--arrow.png</normaloff>:/icons/document--arrow.png</iconset>
    </property>
    <property name="text">
     <string>Commit</string>
@@ -311,8 +353,8 @@
   </action>
   <action name="actionNewArticle">
    <property name="icon">
-    <iconset theme="document-new">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/document--plus.png</normaloff>:/icons/document--plus.png</iconset>
    </property>
    <property name="text">
     <string>New</string>
@@ -320,8 +362,8 @@
   </action>
   <action name="actionDeleteArticle">
    <property name="icon">
-    <iconset theme="stock_delete">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/document--minus.png</normaloff>:/icons/document--minus.png</iconset>
    </property>
    <property name="text">
     <string>Delete</string>
@@ -329,8 +371,8 @@
   </action>
   <action name="actionSync">
    <property name="icon">
-    <iconset theme="mail-send-receive">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/arrow-circle-double-135.png</normaloff>:/icons/arrow-circle-double-135.png</iconset>
    </property>
    <property name="text">
     <string>Sync</string>
@@ -338,8 +380,8 @@
   </action>
   <action name="actionQuit">
    <property name="icon">
-    <iconset theme="system-shutdown">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/door-open-out.png</normaloff>:/icons/door-open-out.png</iconset>
    </property>
    <property name="text">
     <string>Quit</string>
@@ -347,8 +389,8 @@
   </action>
   <action name="actionNewWiki">
    <property name="icon">
-    <iconset theme="folder-new">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/book--plus.png</normaloff>:/icons/book--plus.png</iconset>
    </property>
    <property name="text">
     <string>New Wiki ...</string>
@@ -356,8 +398,8 @@
   </action>
   <action name="actionOpen">
    <property name="icon">
-    <iconset theme="folder-open">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/book-open-text-image.png</normaloff>:/icons/book-open-text-image.png</iconset>
    </property>
    <property name="text">
     <string>Open ...</string>
@@ -365,8 +407,8 @@
   </action>
   <action name="actionEditWiki">
    <property name="icon">
-    <iconset theme="document-edit">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/book--pencil.png</normaloff>:/icons/book--pencil.png</iconset>
    </property>
    <property name="text">
     <string>Edit Wiki</string>
@@ -374,7 +416,8 @@
   </action>
   <action name="actionEditArticle">
    <property name="icon">
-    <iconset theme="document-edit"/>
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/document--pencil.png</normaloff>:/icons/document--pencil.png</iconset>
    </property>
    <property name="text">
     <string>Edit</string>
@@ -386,6 +429,7 @@
    <class>QsciScintilla</class>
    <extends>QFrame</extends>
    <header>Qsci/qsciscintilla.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>QWebEngineView</class>

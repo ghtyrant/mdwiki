@@ -211,7 +211,7 @@ class Wiki:
 
         # TODO This is a dirty hack - we should not have to commit an article immediately
         # Last time I checked, dulwich doesn't handle untracked files though
-        article.write("")
+        article.write()
         article.commit(message="Initial commit for '%s'" %
                        (article.get_wiki_url()))
 

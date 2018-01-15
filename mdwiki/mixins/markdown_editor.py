@@ -1,5 +1,6 @@
 from PyQt5.QtCore import QFile, QIODevice, QTextStream
-from PyQt5.Qsci import QsciLexerMarkdown, QsciLexerHTML
+from PyQt5.QtGui import QFontDatabase, QTextOption, QColor
+from PyQt5.Qsci import QsciLexerMarkdown, QsciLexerHTML, QsciScintilla
 
 from ..backend.markuprenderer import MarkdownRenderer, PlainRenderer, ReSTRenderer
 
@@ -19,9 +20,25 @@ class MarkdownEditorMixin:
         self.add_renderer(self.fallback_renderer)
         self.add_renderer(MarkdownRenderer())
         self.add_renderer(ReSTRenderer())
-        self.ui.markdownEditor.setLexer(QsciLexerMarkdown())
+
+        # Set up Markdown editor
+        lexer = QsciLexerMarkdown()
+        fontdb = QFontDatabase()
+        lexer.setDefaultFont(fontdb.font('Source Code Pro', 'Regular', 11))
+        self.ui.markdownEditor.setLexer(lexer)
+        self.ui.markdownEditor.setWrapMode(QsciScintilla.WrapWord)
+        self.ui.markdownEditor.setMarginWidth(0, "0000")
+        self.ui.markdownEditor.setMarginLineNumbers(0, True)
+        self.ui.markdownEditor.setMarginsFont(fontdb.font('Source Code Pro', 'Regular', 11))
+        self.ui.markdownEditor.setMarginType(0, QsciScintilla.NumberMargin)
+        self.ui.markdownEditor.setIndentationsUseTabs(False)
+        self.ui.markdownEditor.setTabWidth(2)
+        self.ui.markdownEditor.setTabIndents(True)
+
+        # Set up HTML preview
         self.ui.htmlPreview.setLexer(QsciLexerHTML())
 
+        # Connect signals
         self.ui.actionUndo.triggered.connect(self.undo)
         self.ui.actionRedo.triggered.connect(self.redo)
 

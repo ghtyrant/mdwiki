@@ -1,5 +1,30 @@
 <RCC>
-  <qresource prefix="styles">
-    <file>github.css</file>
-  </qresource>
+    <qresource prefix="/styles">
+        <file>github.css</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file>application-resize-full.png</file>
+        <file>arrow.png</file>
+        <file>arrow-180.png</file>
+        <file>book.png</file>
+        <file>document-text-image.png</file>
+        <file>document--pencil.png</file>
+        <file>disk.png</file>
+        <file>document--arrow.png</file>
+        <file>arrow-circle-double-135.png</file>
+        <file>document--minus.png</file>
+        <file>document--plus.png</file>
+        <file>door-open-out.png</file>
+        <file>book-open-text-image.png</file>
+        <file>book--pencil.png</file>
+        <file>book--plus.png</file>
+        <file>exclamation-circle.png</file>
+        <file>app.png</file>
+        <file>blue-folder-open.png</file>
+    </qresource>
+    <qresource prefix="/font">
+        <file>SourceCodePro-Bold.otf</file>
+        <file>SourceCodePro-It.otf</file>
+        <file>SourceCodePro-Regular.otf</file>
+    </qresource>
 </RCC>

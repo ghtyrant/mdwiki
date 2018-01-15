@@ -43,18 +43,26 @@ class ArticleViewModel:
         return self.parentItem
 
     def row(self):
-        if self.parent:
-            return self.parent.children.index(self)
+        if self.model.parent:
+            return self.model.parent.children.index(self)
 
         return 0
+
+    def insertChild(self, position, model):
+        if position < 0 or position > len(self.childItems):
+            return False
+
+        item = ArticleViewModel(model, self)
+        self.childItems.insert(position, item)
+
+        return True
 
     def insertChildren(self, position, count, columns):
         if position < 0 or position > len(self.childItems):
             return False
 
         for row in range(count):
-            data = [None for v in range(columns)]
-            item = ArticleViewModel(data, self)
+            item = ArticleViewModel(None, self)
             self.childItems.insert(position, item)
 
         return True
@@ -77,19 +85,24 @@ class ArticleViewModel:
         return True
 
     def decorationIcon(self, column):
+        if not self.model:
+            return QIcon()
+
         if column == 0:
-            if len(self.childItems) > 0:
-                return QIcon.fromTheme('default-fileopen')
+            if not self.model.parent:
+                return QIcon(':/icons/book.png')
+            elif len(self.childItems) > 0:
+                return QIcon(':/icons/blue-folder-open.png')
             else:
-                return QIcon.fromTheme('application-document')
+                return QIcon.fromTheme(':/icons/document-text-image.png')
         elif column == 1:
             if self.model.modified:
-                return QIcon.fromTheme('document-edit')
+                return QIcon.fromTheme(':/icons/disk.png')
             else:
                 return QIcon()
         elif column == 2:
             if self.model.has_unstaged_changes():
-                return QIcon.fromTheme('dialog-warning')
+                return QIcon.fromTheme(':/icons/exclamation-circle.png')
             else:
                 return QIcon()
 
@@ -168,6 +181,14 @@ class WikiTreeModel(QAbstractItemModel):
 
         return success
 
+    def insertArticle(self, position, article, parent=QModelIndex()):
+        parentItem = self.getItem(parent)
+        self.beginInsertRows(parent, position, position)
+        success = parentItem.insertChild(position, article)
+        self.endInsertRows()
+
+        return success
+
     def parent(self, index):
         if not index.isValid():
             return QModelIndex()
@@ -201,8 +222,7 @@ class WikiTreeModel(QAbstractItemModel):
 
     def moveArticle(self, old_parent_index, article_index, parent_index):
         print('destinationChild: %d' % (self.rowCount(parent_index) + 1))
-        self.beginMoveRows(old_parent_index, article_index.row(
-        ), article_index.row(), parent_index, self.rowCount(parent_index) - 1)
+        self.beginMoveRows(old_parent_index, article_index.row(), article_index.row(), parent_index, self.rowCount(parent_index) - 1)
         self.endMoveRows()
 
     def rowCount(self, parent=QModelIndex()):
@@ -271,7 +291,7 @@ class NewArticleDialog(QDialog, Ui_NewArticleDialog):
         self.parent.setModel(wiki_tree_model)
         self.setup_ui_hacks()
 
-        for file_type, renderer in renderers.items():
+        for _, renderer in renderers.items():
             self.type.addItem(QIcon(), renderer.name, renderer.file_type)
 
         if self.article is None:
@@ -325,7 +345,8 @@ class WikiTreeMixin:
     def setup_wiki_tree(self):
         self.ui.wikiTree.clicked.connect(self.item_clicked)
         self.ui.actionNewArticle.triggered.connect(
-            self.show_new_article_dialog)
+            # TODO this is ugly - the signal handler gets a bool as second argument, making article=bool
+            partial(self.show_new_article_dialog, None))
         self.current_article_index = None
 
         self.ui.wikiTree.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -335,7 +356,11 @@ class WikiTreeMixin:
     def item_clicked(self, index):
         article = self.ui.wikiTree.model().data(index, Qt.EditRole)
         self.current_article_index = index
-        self.load_article(article)
+
+        # TODO this fixes a crash when clicking on the wiki node
+        # This should display some kind of index(?) (_index.md?)
+        if article.parent is not None:
+            self.load_article(article)
 
     def show_new_article_dialog(self, article=None):
         model = self.ui.wikiTree.model()
@@ -362,7 +387,12 @@ class WikiTreeMixin:
 
         # New article
         else:
-            pass
+            new_article = parent.repository.create_article(name, file_type, parent)
+            #new_article_vm = ArticleViewModel(new_article, parent_index)
+            parent_vm = self.ui.wikiTree.model().getItem(parent_index)
+            print(parent_vm.childCount())
+            print(self.ui.wikiTree.model().insertArticle(self.ui.wikiTree.model().rowCount(parent_index), new_article, parent_index))
+            #self.ui.wikiTree.model().setData()
 
     def show_context_menu(self, pos):
         index = self.ui.wikiTree.indexAt(pos)

@@ -2,6 +2,7 @@ import os
 import sys
 from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtWidgets import QMainWindow, qApp, QFileDialog, QMessageBox
+from PyQt5.QtGui import QFontDatabase, QIcon
 
 from .gui.mdwiki_ui import Ui_MainWindow
 
@@ -76,6 +77,7 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
         self.ui.setupUi(self)
 
         self.setup_ui_hacks()
+        self.setup_fonts()
 
         # Set up mixins
         self.setup_recent_files()
@@ -90,11 +92,18 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
     def setup_connections(self):
         # Application Menu
         self.ui.actionQuit.triggered.connect(qApp.quit)
-        self.ui.actionOpen.triggered.connect(self.open_wiki)
+        self.ui.actionOpen.triggered.connect(self.show_open_wiki_dialog)
 
     def setup_ui_hacks(self):
         # Force equal division of QSplitter panes
         self.ui.splitter.setSizes([sys.maxsize, sys.maxsize])
+
+        self.setWindowIcon(QIcon(':/icons/app.png'))
+
+    def setup_fonts(self):
+        QFontDatabase.addApplicationFont(':/font/SourceCodePro-Regular.otf')
+        QFontDatabase.addApplicationFont(':/font/SourceCodePro-It.otf')
+        QFontDatabase.addApplicationFont(':/font/SourceCodePro-Bold.otf')
 
     def close_wiki(self, wiki):
         self.ui.wikiTree.removeChild(wiki.item)
@@ -102,10 +111,12 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
         wiki.close()
 
     def show_open_wiki_dialog(self):
-        path = str(QFileDialog.getExistingDirectory(self, 'Select Directory'))
+
 
         while True:
-            if not os.path.exists(os.path.join(path, '.git')):
+            path = str(QFileDialog.getExistingDirectory(self, 'Select Directory'))
+
+            if path and not os.path.exists(os.path.join(path, '.git')):
                 QMessageBox.information(
                     self, 'Wrong path', 'This folder does not contain a valid wiki!')
 
