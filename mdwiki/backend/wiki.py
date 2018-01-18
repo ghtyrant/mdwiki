@@ -64,17 +64,15 @@ class Wiki:
         return Wiki(path)
 
     @classmethod
-    def create(cls, name, path, remote_url, file_type, author_name, author_mail):
+    def create(cls, name, path, remote_url, file_type, author_name, author_mail, template_text):
         git_repos = DulwichWiki.init(path)
         wiki = Wiki(path, git_repos)
 
         wiki.update_config(name, remote_url, file_type,
                             author_name, author_mail)
 
-        file = QFile(":/new_wiki.md")
-        text = file.readAll().replace("%TITLE%", name)
-        file.close()
-        wiki.root.set_text(text)
+        # Initialize index page with template
+        wiki.root.set_text(template_text)
         wiki.root.write()
 
         return wiki

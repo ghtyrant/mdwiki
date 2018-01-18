@@ -21,6 +21,9 @@ class ArticleViewModel:
         self.childItems.append(item)
 
     def child(self, row):
+        if row >= len(self.childItems):
+            return None
+
         return self.childItems[row]
 
     def childCount(self):
@@ -107,6 +110,9 @@ class ArticleViewModel:
             else:
                 return QIcon()
 
+    def __repr__(self):
+        return self.model.get_name()
+
 
 class WikiTreeModel(QAbstractItemModel):
     def __init__(self, headers, wiki, parent=None):
@@ -161,6 +167,7 @@ class WikiTreeModel(QAbstractItemModel):
 
         parentItem = self.getItem(parent)
         childItem = parentItem.child(row)
+
         if childItem:
             return self.createIndex(row, column, childItem)
         else:
@@ -222,9 +229,13 @@ class WikiTreeModel(QAbstractItemModel):
         return success
 
     def moveArticle(self, old_parent_index, article_index, parent_index):
-        print('destinationChild: %d' % (self.rowCount(parent_index) + 1))
-        self.beginMoveRows(old_parent_index, article_index.row(), article_index.row(), parent_index, self.rowCount(parent_index) - 1)
-        self.endMoveRows()
+        # This should actually use beginMoveRows/endMoveRows
+        # But since documentation is seriously lacking and there are _NO_ examples on how to correctly use those let's just be fools
+        article = self.getItem(article_index)
+        newParent = self.getItem(parent_index)
+
+        self.removeRows(article_index.row(), 1, old_parent_index)
+        self.insertArticle(newParent.childCount(), article.model, parent_index)
 
     def rowCount(self, parent=QModelIndex()):
         parentItem = self.getItem(parent)
@@ -408,9 +419,8 @@ class WikiTreeMixin:
 
             # Move article in tree
             if old_parent != parent:
-                old_parent_index = model.findData(old_parent)
                 article_index = model.findData(article)
-                model.moveArticle(old_parent_index,
+                model.moveArticle(article_index.parent(),
                                   article_index, parent_index)
 
         # New article
