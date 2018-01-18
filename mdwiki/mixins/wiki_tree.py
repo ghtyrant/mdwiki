@@ -1,10 +1,13 @@
+import logging
 from functools import partial
 
 from PyQt5.QtCore import QAbstractItemModel, QModelIndex, Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QDialog, QMenu
+from PyQt5.QtWidgets import QDialog, QMenu, QMessageBox
 
 from ..gui.new_article_ui import Ui_NewArticleDialog
+
+logger = logging.getLogger(__name__)
 
 
 class ArticleViewModel:
@@ -18,8 +21,6 @@ class ArticleViewModel:
         self.childItems.append(item)
 
     def child(self, row):
-        print('model: %s self.child(%d) len: %d' % (
-            'root' if not self.model else self.model.name, row, len(self.childItems)))
         return self.childItems[row]
 
     def childCount(self):
@@ -266,8 +267,6 @@ class WikiTreeModel(QAbstractItemModel):
                            2,
                            Qt.MatchRecursive)
 
-        print(index)
-
         return None if not index else index[0]
 
     def setupModelData(self, wiki):
@@ -282,7 +281,7 @@ class WikiTreeModel(QAbstractItemModel):
 
 
 class NewArticleDialog(QDialog, Ui_NewArticleDialog):
-    def __init__(self, parent, wiki_tree_model, renderers, article=None):
+    def __init__(self, parent, wiki_tree_model, renderers, article=None, selected_index=None):
         super().__init__(parent)
 
         self.article = article
@@ -296,9 +295,13 @@ class NewArticleDialog(QDialog, Ui_NewArticleDialog):
 
         if self.article is None:
             index = self.type.findData(wiki_tree_model.model.default_file_type)
+            self.type.setCurrentIndex(index)
 
             # Select wiki root
-            self.parent.setCurrentIndex(wiki_tree_model.index(0, 0))
+            if selected_index:
+                self.parent.setCurrentIndex(selected_index)
+            else:
+                self.parent.setCurrentIndex(wiki_tree_model.index(0, 0))
         else:
             index = self.type.findData(article.file_type)
             self.name.setText(self.article.name)
@@ -359,12 +362,37 @@ class WikiTreeMixin:
 
         # TODO this fixes a crash when clicking on the wiki node
         # This should display some kind of index(?) (_index.md?)
-        if article.parent is not None:
-            self.load_article(article)
+        #if article.parent is not None:
+        self.set_current_wiki(article.get_wiki())
+        self.load_article(article)
+
+    def select_article(self, article):
+        index = self.ui.wikiTree.model().findData(article)
+
+        if index:
+            self.ui.wikiTree.setCurrentIndex(index)
+        else:
+            logger.warn('Could not select article %s: Not found!' % (article))
+
+    def show_delete_article_dialog(self, article):
+        message = "This will delete the article '%s'" % (article.get_name())
+        if len(article.children) > 0:
+            message += ", including it's children:\n\n - %s\n" % ('\n - '.join([str(c) for c in article.children]))
+        message += "\nAre you sure?"
+
+        reply = QMessageBox.question(self, 'Delete Article',
+                        message, QMessageBox.Yes, QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            model = self.ui.wikiTree.model()
+            article_index = model.findData(article)
+            model.removeRows(article_index.row(), 1, article_index.parent())
+            article.delete()
+            #self.load_article(self.get_current_wiki().root)
 
     def show_new_article_dialog(self, article=None):
         model = self.ui.wikiTree.model()
-        dialog = NewArticleDialog(self, model, self.renderers, article)
+        dialog = NewArticleDialog(self, model, self.renderers, article, self.ui.wikiTree.currentIndex())
 
         if dialog.execute() != QDialog.Accepted:
             return
@@ -402,15 +430,22 @@ class WikiTreeMixin:
 
         article = self.ui.wikiTree.model().data(index, Qt.EditRole)
 
+
         menu = QMenu()
         menu.addAction(self.ui.actionEditArticle)
+        menu.addSeparator()
+        menu.addAction(self.ui.actionDeleteArticle)
 
         try:
             self.ui.actionEditArticle.triggered.disconnect()
+            self.ui.actionDeleteArticle.triggered.disconnect()
         except TypeError:
             pass
 
         self.ui.actionEditArticle.triggered.connect(
             partial(self.show_new_article_dialog, article))
+
+        self.ui.actionDeleteArticle.triggered.connect(
+            partial(self.show_delete_article_dialog, article))
 
         menu.exec_(self.ui.wikiTree.viewport().mapToGlobal(pos))

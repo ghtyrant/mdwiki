@@ -1,4 +1,5 @@
-from .mdwiki import main
+from mdwiki.mdwiki import main
+
 
 if __name__ == '__main__':
     main()

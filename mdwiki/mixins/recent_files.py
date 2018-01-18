@@ -43,13 +43,11 @@ class RecentFilesMixin:
 
         for i in range(num_recent_files):
             text = "&%d %s" % (i + 1, QFileInfo(files[i]).fileName())
-            print(text)
             self.recent_wikis_actions[i].setText(text)
             self.recent_wikis_actions[i].setData(files[i])
             self.recent_wikis_actions[i].setVisible(True)
 
         for j in range(num_recent_files, RecentFilesMixin.MAX_RECENT_FILES):
-            print("%d is not visible" % j)
             self.recent_wikis_actions[j].setVisible(False)
 
     def open_recent_wiki(self):

@@ -27,4 +27,7 @@
         <file>SourceCodePro-It.otf</file>
         <file>SourceCodePro-Regular.otf</file>
     </qresource>
+    <qresource prefix="/">
+        <file>new_wiki.md</file>
+    </qresource>
 </RCC>

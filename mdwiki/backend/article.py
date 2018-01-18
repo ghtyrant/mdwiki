@@ -1,6 +1,7 @@
 import os
 import shutil
 import time
+import logging
 
 from dulwich.file import GitFile
 
@@ -9,10 +10,11 @@ from .constants import DEFAULT_FOLDER_PERMISSION, INDEX_FILE_NAME
 
 ICON_FOLDER = 'folder-symbolic'
 ICON_ARTICLE = 'folder-documents-symbolic'
-ICON_REPOSITORY = 'accessories-dictionary'
+ICON_wiki = 'accessories-dictionary'
 
 ICON_STATUS_CHANGES = 'dialog-warning'
 
+logger = logging.getLogger(__name__)
 
 class ArticleHistoryEntry:
     def __init__(self, article, commit):
@@ -26,7 +28,7 @@ class ArticleHistoryEntry:
 
     def get_lines(self):
         """ Returns the article's content in this past commit. """
-        git_repos = self.article.get_repository().get_git()
+        git_repos = self.article.get_wiki().get_git()
 
         object_store = git_repos.object_store
         old_tree = self.commit.tree
@@ -55,11 +57,11 @@ class ArticleHistoryEntry:
 
 
 class Article:
-    def __init__(self, name, file_type, parent, repository, is_directory=False):
+    def __init__(self, name, file_type, parent, wiki, is_directory=False):
         self.name = name
         self.file_type = file_type
         self.parent = parent
-        self.repository = repository
+        self.wiki = wiki
         self.is_directory = is_directory
 
         self.children = []
@@ -70,23 +72,29 @@ class Article:
 
         self.changed_files = set()
 
-    @classmethod
-    def new_from_file_name(cls, file_name, parent, repository):
-        name, file_type = os.path.splitext(file_name)
-        return cls.new(name, file_type, parent, repository)
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return "<Article '%s'>" % self.name
 
     @classmethod
-    def new(cls, name, file_type, parent, repository):
-        return Article(name, file_type, parent, repository)
+    def new_from_file_name(cls, file_name, parent, wiki):
+        name, file_type = os.path.splitext(file_name)
+        return cls.new(name, file_type, parent, wiki)
+
+    @classmethod
+    def new(cls, name, file_type, parent, wiki):
+        return Article(name, file_type, parent, wiki)
 
     def is_root(self):
         return self.parent is None
 
-    def set_repository(self, repository):
-        self.repository = repository
+    def set_wiki(self, wiki):
+        self.wiki = wiki
 
-    def get_repository(self):
-        return self.repository
+    def get_wiki(self):
+        return self.wiki
 
     def is_category(self):
         return self.is_directory
@@ -134,8 +142,8 @@ class Article:
         if self.is_category():
             new_physical_path = self.get_index_file_name(old_physical_path)
 
-        os.rename(os.path.join(self.get_repository().get_physical_path(), old_physical_path),
-                  os.path.join(self.get_repository().get_physical_path(), new_physical_path))
+        os.rename(os.path.join(self.get_wiki().get_physical_path(), old_physical_path),
+                  os.path.join(self.get_wiki().get_physical_path(), new_physical_path))
         self.add_changed_file(new_physical_path)
         self.commit("Changed file type of '%s' to '%s'" %
                     (self.get_wiki_url(), self.get_file_type()))
@@ -162,7 +170,7 @@ class Article:
 
         target_dir = os.path.dirname(target_path)
 
-        if self.repository.get_root() != self:
+        if self.wiki.get_root() != self:
 
             if not os.path.exists(target_dir):
                 os.makedirs(target_dir)
@@ -175,7 +183,7 @@ class Article:
             child.export(target_dir, renderers)
 
     def get_wiki_url(self):
-        """ This returns the URL of this article, relative to the root of the repository.
+        """ This returns the URL of this article, relative to the root of the wiki.
         e.g. 'test/article'
         """
         if not self.is_root():
@@ -185,7 +193,7 @@ class Article:
 
     def get_absolute_physical_path(self):
         """ This returns the absolute, physical path to either the file or the folder of this article. """
-        return os.path.join(self.get_repository().get_physical_path(), self.get_physical_path())
+        return os.path.join(self.get_wiki().get_physical_path(), self.get_physical_path())
 
     def get_physical_path(self):
         """ This returns the relative, physical path to either the file or the folder of this article. """
@@ -210,7 +218,7 @@ class Article:
 
     def get_child_by_name(self, name):
         for child in self.children:
-            if child.get_name() == name:
+            if child.get_name().lower() == name.lower():
                 return child
 
         return None
@@ -351,7 +359,7 @@ class Article:
             physical_path = os.path.join(
                 physical_path, self.get_index_file_name())
 
-        return self.get_repository().is_path_unstaged(physical_path)
+        return self.get_wiki().is_path_unstaged(physical_path)
 
     def resolve(self, url):
         """ Recursively resolve a wiki url. """
@@ -387,7 +395,7 @@ class Article:
 
         if not file_type:
             absolute_physical_path = os.path.join(
-                self.repository.get_physical_path(), path)
+                self.wiki.get_physical_path(), path)
             for filename in os.listdir(absolute_physical_path):
                 if filename.startswith(INDEX_FILE_NAME):
                     file_type = os.path.splitext(filename)[1]
@@ -410,7 +418,7 @@ class Article:
             article = Article(name,
                               file_type,
                               self,
-                              self.get_repository(),
+                              self.get_wiki(),
                               len(url) > 0)
 
             self.add_child(article)
@@ -476,6 +484,8 @@ class Article:
             physical_path = os.path.join(
                 physical_path, self.get_index_file_name())
 
+        logger.debug("Reading article from '%s'" % physical_path)
+
         if not os.path.exists(physical_path):
             return ""
 
@@ -496,8 +506,8 @@ class Article:
         with GitFile(physical_path, mode="wb") as stream:
             stream.write(self.text.encode('utf-8'))
 
-        # We wrote the changes, update the repository's list of unstaged changes
-        self.get_repository().fetch_unstaged_changes()
+        # We wrote the changes, update the wiki's list of unstaged changes
+        self.get_wiki().fetch_unstaged_changes()
 
         self.modified = False
 
@@ -505,7 +515,7 @@ class Article:
         """ Load our commit history. """
         self.history = []
         try:
-            for entry in self.repository.git_repository.get_walker(
+            for entry in self.wiki.git_wiki.get_walker(
                     paths=[self.get_physical_path().encode('utf-8')]):
                 self.history.append(ArticleHistoryEntry(self, entry.commit))
         # A KeyError can occur on freshly created repositories (without commits)
@@ -513,21 +523,21 @@ class Article:
             pass
 
     def commit(self, message="", commit_children=False):
-        """ Commit changes to the git repository. Also can commit all of its children recursively. """
+        """ Commit changes to the git wiki. Also can commit all of its children recursively. """
         if not message:
             message = "Update article '%s'" % (self.get_wiki_url())
 
         print("Commiting '%s' (%s)" % (message, ', '.join(self.changed_files)))
-        self.get_repository().get_git().stage(list(self.changed_files))
+        self.get_wiki().get_git().stage(list(self.changed_files))
         self.changed_files = set()
 
         message = message.encode('utf-8')
 
         # TODO allow users to change the author's name/mail address
-        committer = ("%s <%s>" % (self.get_repository().get_author_name(),
-                                  self.get_repository().get_author_mail())).encode('utf-8')
+        committer = ("%s <%s>" % (self.get_wiki().get_author_name(),
+                                  self.get_wiki().get_author_mail())).encode('utf-8')
 
-        self.get_repository().get_git().do_commit(message,
+        self.get_wiki().get_git().do_commit(message,
                                                   committer=committer,
                                                   author=committer,
                                                   commit_timestamp=time.time(), commit_timezone=0,
@@ -538,4 +548,4 @@ class Article:
             for child in self.children:
                 child.commit(commit_children=True)
 
-        self.get_repository().fetch_unstaged_changes()
+        self.get_wiki().fetch_unstaged_changes()

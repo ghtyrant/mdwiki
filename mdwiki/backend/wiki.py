@@ -29,7 +29,7 @@ class Wiki:
         self.unstaged_changes = []
 
         self.read_config()
-        self.root = Article(self.get_name(), "", None, self, True)
+        self.root = Article(self.get_name(), self.default_file_type, None, self, True)
 
         git_config = self.git_repository.get_config()
 
@@ -66,12 +66,18 @@ class Wiki:
     @classmethod
     def create(cls, name, path, remote_url, file_type, author_name, author_mail):
         git_repos = DulwichWiki.init(path)
-        repos = Wiki(path, git_repos)
+        wiki = Wiki(path, git_repos)
 
-        repos.update_config(name, remote_url, file_type,
+        wiki.update_config(name, remote_url, file_type,
                             author_name, author_mail)
 
-        return repos
+        file = QFile(":/new_wiki.md")
+        text = file.readAll().replace("%TITLE%", name)
+        file.close()
+        wiki.root.set_text(text)
+        wiki.root.write()
+
+        return wiki
 
     def get_git(self):
         return self.git_repository

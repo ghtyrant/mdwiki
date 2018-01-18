@@ -1,18 +1,54 @@
-from PyQt5.QtCore import QFile, QIODevice, QTextStream
-from PyQt5.QtGui import QFontDatabase, QTextOption, QColor
+from PyQt5.QtCore import QFile, QIODevice, QTextStream, QUrl, pyqtSignal, pyqtProperty, pyqtSlot, QObject
+from PyQt5.QtGui import QFontDatabase, QTextOption, QColor, QDesktopServices
 from PyQt5.Qsci import QsciLexerMarkdown, QsciLexerHTML, QsciScintilla
+from PyQt5.QtWebEngineWidgets import QWebEnginePage, QWebEngineProfile
+from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+from PyQt5.QtWebChannel import QWebChannel
 
 from ..backend.markuprenderer import MarkdownRenderer, PlainRenderer, ReSTRenderer
 
 
+class CustomWebPage(QWebEnginePage):
+    def acceptNavigationRequest(self, url, navType, isMainFrame):
+        if url.scheme() == 'qrc':
+            return True
+
+        QDesktopServices.openUrl(url)
+
+        return False
+
+class WebChannelProxy(QObject):
+    link_clicked = pyqtSignal(str, name='linkClicked')
+
+    @pyqtSlot(str)
+    def activateLink(self, url):
+        self.link_clicked.emit(url)
+
 class MarkdownEditorMixin:
-    SCROLLING_JS = """<script>const element = document.getElementById('__CURSOR__');
+    SCROLLING_JS = """const element = document.getElementById('__CURSOR__');
         if (element !== null && element !== undefined) {
           const elementRect = element.getBoundingClientRect();
           const absoluteElementTop = elementRect.top + window.pageYOffset;
           const middle = absoluteElementTop - (window.innerHeight / 2);
           window.scrollTo(0, middle);
-        }</script>"""
+        }"""
+
+    WEBCHANNEL_JS = """
+    (function(){
+        new QWebChannel(qt.webChannelTransport,
+            function(channel) {
+                var proxy = channel.objects.proxy;
+
+                document.body.addEventListener('click', function (e) {
+                    if (!e.target || e.target.nodeName != "A") {
+		                return;
+	                }
+                    proxy.activateLink(e.target.getAttribute('href'));
+                    e.preventDefault();
+                }, false);
+            }
+        );
+    })();"""
 
     def setup_markdown_editor(self):
         self.renderers = {}
@@ -34,6 +70,20 @@ class MarkdownEditorMixin:
         self.ui.markdownEditor.setIndentationsUseTabs(False)
         self.ui.markdownEditor.setTabWidth(2)
         self.ui.markdownEditor.setTabIndents(True)
+
+        # Set up our custom page to open external links in a browser
+        page = CustomWebPage(self)
+        self.ui.markdownPreview.setPage(page)
+
+        # Set up the web channel to intercept clicks on links
+        channel = QWebChannel(self)
+        self.channel_proxy = WebChannelProxy(self)
+        channel.registerObject("proxy", self.channel_proxy)
+        page.setWebChannel(channel)
+
+        self.channel_proxy.link_clicked.connect(self.link_clicked)
+
+        #self.ui.markdownPreview.setUrl(QUrl("qrc:/index.html"))
 
         # Set up HTML preview
         self.ui.htmlPreview.setLexer(QsciLexerHTML())
@@ -58,6 +108,10 @@ class MarkdownEditorMixin:
         self.ui.actionRedo.setEnabled(False)
 
         self.update_toolbar()
+
+    def link_clicked(self, url):
+        article = self.get_current_wiki().get_root().resolve(url)
+        self.load_article(article)
 
     def update_toolbar(self):
         self.ui.actionSave.setEnabled(False)
@@ -112,13 +166,14 @@ class MarkdownEditorMixin:
 
         # Render and update the preview
         page = self.ui.markdownPreview.page()
+
         if self.current_article.file_type not in self.renderers:
             renderer = self.fallback_renderer
         else:
             renderer = self.renderers[self.current_article.file_type]
 
         html = renderer.render(text, style=self.style)
-        page.setHtml(html + MarkdownEditorMixin.SCROLLING_JS)
+        page.setHtml(html + '<script src="qrc:///qtwebchannel/qwebchannel.js"></script><script>(function() {' + MarkdownEditorMixin.SCROLLING_JS + MarkdownEditorMixin.WEBCHANNEL_JS + '})();</script>')
         self.ui.htmlPreview.setText(html)
 
         # setHtml() steals focus from the editor - give it back
@@ -132,6 +187,9 @@ class MarkdownEditorMixin:
                 self.cursor_changed)
         except TypeError:
             pass
+
+        # Select the article in the tree (e.g. when we came here by clicking a link)
+        self.select_article(article)
 
         self.current_article = article
         self.ui.markdownEditor.setText(article.get_text())

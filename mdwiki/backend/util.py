@@ -74,6 +74,12 @@ class CursorAnchorInjector(Treeprocessor):
                         parent.insert(idx + 1, anchor)
                         break
             else:
+                # Also check in the element's attributes (e.g. in href of <a>)
+                for name, value in child.attrib.items():
+                    if CURSOR_MARK in value:
+                        child.set(name, value.replace(CURSOR_MARK, ''))
+                        return None
+
                 continue
 
             return None

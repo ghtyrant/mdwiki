@@ -1,7 +1,9 @@
 import os
 import sys
+import logging
+
 from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtWidgets import QMainWindow, qApp, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, qApp, QFileDialog, QMessageBox, QApplication
 from PyQt5.QtGui import QFontDatabase, QIcon
 
 from .gui.mdwiki_ui import Ui_MainWindow
@@ -111,8 +113,6 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
         wiki.close()
 
     def show_open_wiki_dialog(self):
-
-
         while True:
             path = str(QFileDialog.getExistingDirectory(self, 'Select Directory'))
 
@@ -128,6 +128,12 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
             return
 
         self.open_wiki(path)
+
+    def set_current_wiki(self, wiki):
+        self.current_wiki = wiki
+
+    def get_current_wiki(self):
+        return self.current_wiki
 
     def open_wiki(self, path):
         # If this wiki is already open, reopen it
@@ -151,3 +157,13 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
         self.ui.wikiName.setText(name)
 
         self.add_recent_wiki(path)
+
+
+def main():
+    logging.basicConfig(level=logging.DEBUG)
+    logging.info("Starting up QMDWiki!")
+
+    app = QApplication(sys.argv)
+    wiki = MDWiki()
+    wiki.show()
+    sys.exit(app.exec_())

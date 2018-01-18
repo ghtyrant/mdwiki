@@ -14,12 +14,6 @@ class MarkupRenderer(ABC):
     def render(self, raw_text, style=""):
         pass
 
-    def get_tree_iter(self):
-        return self.tree_iter
-
-    def set_tree_iter(self, tree_iter):
-        self.tree_iter = tree_iter
-
     def get_name(self):
         return self.name
 
@@ -31,7 +25,7 @@ class PlainRenderer(MarkupRenderer):
     def __init__(self):
         super().__init__("Plaintext", ".txt")
 
-    def render(self, raw_text):
+    def render(self, raw_text, style=""):
         return raw_text
 
 
