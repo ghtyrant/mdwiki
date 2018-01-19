@@ -3,8 +3,13 @@ import sys
 import logging
 
 from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtWidgets import QMainWindow, qApp, QFileDialog, QMessageBox, QApplication
-from PyQt5.QtGui import QFontDatabase, QIcon
+from PyQt5.QtWidgets import (QMainWindow,
+                             qApp,
+                             QFileDialog,
+                             QMessageBox,
+                             QApplication,
+                             QStyleFactory)
+from PyQt5.QtGui import QFontDatabase, QIcon, QPalette, QColor
 
 from .gui.mdwiki_ui import Ui_MainWindow
 
@@ -14,57 +19,11 @@ from .mixins.wiki_tree import WikiTreeMixin, WikiTreeModel
 
 from .backend.wiki import Wiki
 
-"""class ArticleViewModel(QTreeWidgetItem):
-    def __init__(self, wiki_vm, article, parent, icon=None):
-        super().__init__(parent, [article.get_name()])
 
-        self.wiki_vm = wiki_vm
-        self.model = article
-        self.parent = parent
-
-        if icon:
-            self.setIcon(0, icon)
-        elif self.model.children:
-            self.setIcon(0, QIcon.fromTheme('default-fileopen'))
-        else:
-            self.setIcon(0, QIcon.fromTheme('application-document'))
-
-        self.set_unstaged(self.model.has_unstaged_changes())
-
-    def set_unstaged(self, flag):
-        if flag:
-            self.setIcon(2, QIcon.fromTheme('dialog-warning'))
-        else:
-            self.setIcon(2, QIcon())
-
-    def set_unsaved(self, flag):
-        if flag:
-            self.setIcon(1, QIcon.fromTheme('document-edit'))
-        else:
-            self.setIcon(1, QIcon())
-
-
-class WikiViewModel:
-    def __init__(self, wiki, root):
-        self.wiki = wiki
-        self.setup_ui(root)
-
-    def setup_ui(self, root):
-        self.root_article_vm = ArticleViewModel(self,
-                                                self.wiki.get_root(),
-                                                root,
-                                                QIcon.fromTheme('blue-folder-books'))
-
-        self.add_children(self.root_article_vm)
-
-    def add_children(self, root_article_vm):
-        for child in root_article_vm.model.children:
-            article_vm = ArticleViewModel(self, child, root_article_vm)
-            self.add_children(article_vm)
-"""
-
-
-class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
+class MDWiki(QMainWindow,
+             RecentFilesMixin,
+             MarkdownEditorMixin,
+             WikiTreeMixin):
     ORG_NAME = 'skyr'
     ORG_DOMAIN = 'skyr.at'
     APP_NAME = 'MDWiki'
@@ -89,6 +48,7 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
         self.setup_connections()
 
         self.wikis = {}
+        self.current_wiki = None
         self.current_article_vm = None
 
     def setup_connections(self):
@@ -114,11 +74,12 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
 
     def show_open_wiki_dialog(self):
         while True:
-            path = str(QFileDialog.getExistingDirectory(self, 'Select Directory'))
+            path = str(QFileDialog.getExistingDirectory(
+                self, 'Select Directory'))
 
             if path and not os.path.exists(os.path.join(path, '.git')):
-                QMessageBox.information(
-                    self, 'Wrong path', 'This folder does not contain a valid wiki!')
+                msg = 'This folder does not contain a valid wiki!'
+                QMessageBox.information(self, 'Wrong path', msg)
 
                 continue
 
@@ -162,8 +123,38 @@ class MDWiki(QMainWindow, RecentFilesMixin, MarkdownEditorMixin, WikiTreeMixin):
 def main():
     logging.basicConfig(level=logging.DEBUG)
     logging.info("Starting up QMDWiki!")
+    logging.info(QStyleFactory.keys())
 
+    # Use Fusion style
     app = QApplication(sys.argv)
+    app.setStyle(QStyleFactory.create('Fusion'))
+
+    # TODO This is not how it should be done. Replace this with a proper style.
+    dark_palette = QPalette()
+    dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.WindowText, QColor(255, 255, 255))
+    dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 255))
+    dark_palette.setColor(QPalette.ToolTipText, QColor(255, 255, 255))
+    dark_palette.setColor(QPalette.Text, QColor(255, 255, 255))
+    dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ButtonText, QColor(255, 255, 255))
+    dark_palette.setColor(QPalette.BrightText, QColor(255, 0, 0))
+    dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
+
+    dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.HighlightedText, QColor(0, 0, 0))
+
+    app.setPalette(dark_palette)
+
+    app.setStyleSheet(
+        """QToolTip {
+            color: #ffffff;
+            background-color: #2a82da;
+            border: 1px solid white;
+        }""")
+
     wiki = MDWiki()
     wiki.show()
     sys.exit(app.exec_())

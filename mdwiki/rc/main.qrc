@@ -1,6 +1,8 @@
 <RCC>
     <qresource prefix="/styles">
         <file>github.css</file>
+        <file>markdown.css</file>
+        <file>amblin.css</file>
     </qresource>
     <qresource prefix="/icons">
         <file>application-resize-full.png</file>

@@ -230,7 +230,8 @@ class WikiTreeModel(QAbstractItemModel):
 
     def moveArticle(self, old_parent_index, article_index, parent_index):
         # This should actually use beginMoveRows/endMoveRows
-        # But since documentation is seriously lacking and there are _NO_ examples on how to correctly use those let's just be fools
+        # But since documentation is seriously lacking and there are no
+        # examples on how to correctly use those let's just be fools
         article = self.getItem(article_index)
         newParent = self.getItem(parent_index)
 
@@ -292,7 +293,8 @@ class WikiTreeModel(QAbstractItemModel):
 
 
 class NewArticleDialog(QDialog, Ui_NewArticleDialog):
-    def __init__(self, parent, wiki_tree_model, renderers, article=None, selected_index=None):
+    def __init__(self, parent, wiki_tree_model,
+                 renderers, article=None, selected_index=None):
         super().__init__(parent)
 
         self.article = article
@@ -338,7 +340,8 @@ class NewArticleDialog(QDialog, Ui_NewArticleDialog):
     def get_data(self):
         parent_index = self.parent.currentIndex()
         parent = self.parent.model().data(parent_index, Qt.EditRole)
-        return (self.name.text(), self.type.currentData(), parent_index, parent)
+        return (self.name.text(), self.type.currentData(),
+                parent_index, parent)
 
     def done(self, res):
         if res != QDialog.Accepted:
@@ -359,7 +362,9 @@ class WikiTreeMixin:
     def setup_wiki_tree(self):
         self.ui.wikiTree.clicked.connect(self.item_clicked)
         self.ui.actionNewArticle.triggered.connect(
-            # TODO this is ugly - the signal handler gets a bool as second argument, making article=bool
+            # TODO this is ugly
+            # The signal handler gets a bool as second argument
+            # making article=bool
             partial(self.show_new_article_dialog, None))
         self.current_article_index = None
 
@@ -373,7 +378,7 @@ class WikiTreeMixin:
 
         # TODO this fixes a crash when clicking on the wiki node
         # This should display some kind of index(?) (_index.md?)
-        #if article.parent is not None:
+        # if article.parent is not None:
         self.set_current_wiki(article.get_wiki())
         self.load_article(article)
 
@@ -388,22 +393,24 @@ class WikiTreeMixin:
     def show_delete_article_dialog(self, article):
         message = "This will delete the article '%s'" % (article.get_name())
         if len(article.children) > 0:
-            message += ", including it's children:\n\n - %s\n" % ('\n - '.join([str(c) for c in article.children]))
+            message += ", including it's children:\n\n - %s\n" % (
+                '\n - '.join([str(c) for c in article.children]))
         message += "\nAre you sure?"
 
         reply = QMessageBox.question(self, 'Delete Article',
-                        message, QMessageBox.Yes, QMessageBox.No)
+                                     message, QMessageBox.Yes, QMessageBox.No)
 
         if reply == QMessageBox.Yes:
             model = self.ui.wikiTree.model()
             article_index = model.findData(article)
             model.removeRows(article_index.row(), 1, article_index.parent())
             article.delete()
-            #self.load_article(self.get_current_wiki().root)
+            self.load_article(self.get_current_wiki().root)
 
     def show_new_article_dialog(self, article=None):
         model = self.ui.wikiTree.model()
-        dialog = NewArticleDialog(self, model, self.renderers, article, self.ui.wikiTree.currentIndex())
+        dialog = NewArticleDialog(self, model, self.renderers,
+                                  article, self.ui.wikiTree.currentIndex())
 
         if dialog.execute() != QDialog.Accepted:
             return
@@ -425,12 +432,12 @@ class WikiTreeMixin:
 
         # New article
         else:
-            new_article = parent.repository.create_article(name, file_type, parent)
-            #new_article_vm = ArticleViewModel(new_article, parent_index)
-            parent_vm = self.ui.wikiTree.model().getItem(parent_index)
-            print(parent_vm.childCount())
-            print(self.ui.wikiTree.model().insertArticle(self.ui.wikiTree.model().rowCount(parent_index), new_article, parent_index))
-            #self.ui.wikiTree.model().setData()
+            new_article = parent.get_wiki().create_article(name,
+                                                           file_type, parent)
+            self.ui.wikiTree.model().insertArticle(
+                self.ui.wikiTree.model().rowCount(parent_index),
+                new_article,
+                parent_index)
 
     def show_context_menu(self, pos):
         index = self.ui.wikiTree.indexAt(pos)
@@ -439,7 +446,6 @@ class WikiTreeMixin:
             return
 
         article = self.ui.wikiTree.model().data(index, Qt.EditRole)
-
 
         menu = QMenu()
         menu.addAction(self.ui.actionEditArticle)

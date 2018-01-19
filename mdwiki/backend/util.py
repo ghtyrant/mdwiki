@@ -1,6 +1,5 @@
 import os
 import re
-from urllib.parse import urlparse
 
 from markdown.extensions import Extension
 from markdown.treeprocessors import Treeprocessor
@@ -15,26 +14,11 @@ def split_path(path):
     head, tail = os.path.split(path)
     components = []
 
-    while len(tail) > 0:
+    while tail:
         components.insert(0, tail)
         head, tail = os.path.split(head)
 
     return components
-
-
-def strip_file_scheme(path):
-    result = urlparse(path)
-
-    full_path = os.path.join(result.netloc, result.path)
-
-    # On Win32, Gtk's folder chooser returns "file:///C:/yadda/yadda"
-    # urlparse parses that to netloc="", path="/C:/yadda/yadda"
-    # os.path.abspath turns that into "C:/C:/yadda/yadda"
-    # That's why we remove a leading slash here
-    if os.name == "nt" and full_path.startswith("/"):
-        full_path = full_path[1:]
-
-    return os.path.abspath(full_path)
 
 
 class CursorExtension(Extension):
@@ -51,7 +35,8 @@ class CursorAnchorInjector(Treeprocessor):
 
         # Iterate over all elements in the resulting HTML
         for child in root.iter():
-            # If the child's inner text contains CURSOR_MARK (e.g. <b>Hello CURSOR_MARK World</b>)
+            # If the child's inner text contains CURSOR_MARK
+            # (e.g. <b>Hello CURSOR_MARK World</b>)
             if child.text and CURSOR_MARK in child.text:
                 new_text = child.text[:child.text.find(CURSOR_MARK)]
                 anchor.tail = child.text[child.text.find(
@@ -59,7 +44,8 @@ class CursorAnchorInjector(Treeprocessor):
                 child.text = new_text
                 child.insert(0, anchor)
 
-            # If the text trailing the child contains CURSOR_MARK (e.g. <b>Hello</b> World CURSOR_MARK)
+            # If the text trailing the child contains CURSOR_MARK
+            # (e.g. <b>Hello</b> World CURSOR_MARK)
             elif child.tail and CURSOR_MARK in child.tail:
                 new_tail = child.tail[:child.tail.find(CURSOR_MARK)]
                 anchor.tail = child.tail[child.tail.find(
