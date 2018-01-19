@@ -4,13 +4,9 @@ block_cipher = None
 
 
 a = Analysis(['run.py'],
-             pathex=['C:\\Users\\Fabian\\Documents\\Development\\qmdwiki',
-	             'C:\\Users\\Fabian\\Documents\\Development\\qmdwiki\\.venv\\Lib\\site-packages'],
+             pathex=['.venv/Lib/site-packages'],
              binaries=None,
              datas=[
-                #('ui', 'ui'),
-                #('styles', 'styles'),
-                #('icudt52l.dat', '.')
              ],
              hiddenimports=[
 	     	'PyQt5',
