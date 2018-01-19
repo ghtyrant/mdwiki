@@ -6,6 +6,7 @@ from PyQt5.QtCore import (QFile,
                           pyqtSignal,
                           pyqtSlot,
                           QObject)
+
 from PyQt5.QtGui import QFontDatabase, QDesktopServices
 from PyQt5.Qsci import QsciLexerMarkdown, QsciLexerHTML, QsciScintilla
 from PyQt5.QtWebEngineWidgets import QWebEnginePage
@@ -70,19 +71,7 @@ class MarkdownEditorMixin:
         self.add_renderer(ReSTRenderer())
 
         # Set up Markdown editor
-        lexer = QsciLexerMarkdown()
-        fontdb = QFontDatabase()
-        lexer.setDefaultFont(fontdb.font('Source Code Pro', 'Regular', 11))
-        self.ui.markdownEditor.setLexer(lexer)
-        self.ui.markdownEditor.setWrapMode(QsciScintilla.WrapWord)
-        self.ui.markdownEditor.setMarginWidth(0, "0000")
-        self.ui.markdownEditor.setMarginLineNumbers(0, True)
-        self.ui.markdownEditor.setMarginsFont(
-            fontdb.font('Source Code Pro', 'Regular', 11))
-        self.ui.markdownEditor.setMarginType(0, QsciScintilla.NumberMargin)
-        self.ui.markdownEditor.setIndentationsUseTabs(False)
-        self.ui.markdownEditor.setTabWidth(2)
-        self.ui.markdownEditor.setTabIndents(True)
+        self.setup_scintilla(self.ui.markdownEditor)
 
         # Set up our custom page to open external links in a browser
         page = CustomWebPage(self)
@@ -106,6 +95,7 @@ class MarkdownEditorMixin:
         self.ui.actionSave.triggered.connect(self.save_article)
         self.ui.actionCommit.triggered.connect(self.commit_article)
         self.ui.actionEdit.toggled.connect(self.edit_toggled)
+        self.ui.actionFullscreen.triggered.connect(self.show_fullscreen_editor)
 
         # Load Github style
         style_file = QFile(':/styles/github.css')
@@ -120,6 +110,22 @@ class MarkdownEditorMixin:
         self.ui.actionRedo.setEnabled(False)
 
         self.update_toolbar()
+
+    def setup_scintilla(self, widget):
+        # Set up Markdown editor
+        lexer = QsciLexerMarkdown()
+        fontdb = QFontDatabase()
+        lexer.setDefaultFont(fontdb.font('Source Code Pro', 'Regular', 11))
+        widget.setLexer(lexer)
+        widget.setWrapMode(QsciScintilla.WrapWord)
+        widget.setMarginWidth(0, "0000")
+        widget.setMarginLineNumbers(0, True)
+        widget.setMarginsFont(
+            fontdb.font('Source Code Pro', 'Regular', 11))
+        widget.setMarginType(0, QsciScintilla.NumberMargin)
+        widget.setIndentationsUseTabs(False)
+        widget.setTabWidth(2)
+        widget.setTabIndents(True)
 
     def link_clicked(self, url):
         article = self.get_current_wiki().get_root().resolve(url)
@@ -162,13 +168,8 @@ class MarkdownEditorMixin:
 
         self.update_toolbar()
 
-    def cursor_changed(self, line, index):
-        # Get the byte index of the cursor
-        cursor_index = self.ui.markdownEditor.positionFromLineIndex(
-            line, index)
-
-        # Insert our cursor mark
-        text = self.ui.markdownEditor.text()
+    def render_text(self, text_widget, preview_widget, cursor_index):
+        text = text_widget.text()
 
         # Only jump to cursor when the editor is shown
         if self.ui.actionEdit.isChecked():
@@ -182,9 +183,6 @@ class MarkdownEditorMixin:
 
             text = new_text
 
-        # Render and update the preview
-        page = self.ui.markdownPreview.page()
-
         if self.current_article.file_type not in self.renderers:
             renderer = self.fallback_renderer
         else:
@@ -193,17 +191,27 @@ class MarkdownEditorMixin:
         html = renderer.render(text, style=self.style)
 
         # TODO this is an ugly hack! yuck!
-        page.setHtml(
-            html + """
+        html = html + """
             <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
             <script>(function() {%s\n%s})();</script>""" % (
-                MarkdownEditorMixin.SCROLLING_JS,
-                MarkdownEditorMixin.WEBCHANNEL_JS
-            ))
+            MarkdownEditorMixin.SCROLLING_JS,
+            MarkdownEditorMixin.WEBCHANNEL_JS
+        )
+
+        # Render and update the preview
+        preview_widget.page().setHtml(html)
         self.ui.htmlPreview.setText(html)
 
         # setHtml() steals focus from the editor - give it back
-        self.ui.markdownEditor.setFocus()
+        text_widget.setFocus()
+
+    def cursor_changed(self, line, index):
+        # Get the byte index of the cursor
+        cursor_index = self.ui.markdownEditor.positionFromLineIndex(
+            line, index)
+
+        self.render_text(self.ui.markdownEditor,
+                         self.ui.markdownPreview, cursor_index)
 
     def load_article(self, article):
         # Disconnect any signals while changing article

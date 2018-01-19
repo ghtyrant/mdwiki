@@ -16,6 +16,7 @@ from .gui.mdwiki_ui import Ui_MainWindow
 from .mixins.recent_files import RecentFilesMixin
 from .mixins.markdown_editor import MarkdownEditorMixin
 from .mixins.wiki_tree import WikiTreeMixin, WikiTreeModel
+from .mixins.fullscreen_editor import FullscreenEditorMixin
 
 from .backend.wiki import Wiki
 
@@ -23,7 +24,8 @@ from .backend.wiki import Wiki
 class MDWiki(QMainWindow,
              RecentFilesMixin,
              MarkdownEditorMixin,
-             WikiTreeMixin):
+             WikiTreeMixin,
+             FullscreenEditorMixin):
     ORG_NAME = 'skyr'
     ORG_DOMAIN = 'skyr.at'
     APP_NAME = 'MDWiki'
@@ -44,6 +46,7 @@ class MDWiki(QMainWindow,
         self.setup_recent_files()
         self.setup_markdown_editor()
         self.setup_wiki_tree()
+        self.setup_fullscreen_editor()
 
         self.setup_connections()
 
