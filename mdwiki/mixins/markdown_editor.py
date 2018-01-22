@@ -11,6 +11,7 @@ from PyQt5.QtGui import QFontDatabase, QDesktopServices
 from PyQt5.Qsci import QsciLexerMarkdown, QsciLexerHTML, QsciScintilla
 from PyQt5.QtWebEngineWidgets import QWebEnginePage
 from PyQt5.QtWebChannel import QWebChannel
+from PyQt5.QtCore import QUrl
 
 from ..backend.markuprenderer import (MarkdownRenderer,
                                       PlainRenderer,
@@ -199,7 +200,8 @@ class MarkdownEditorMixin:
         )
 
         # Render and update the preview
-        preview_widget.page().setHtml(html)
+        url = QUrl(self.current_article.get_wiki().get_physical_path() + '/')
+        preview_widget.page().setHtml(html, url)
         self.ui.htmlPreview.setText(html)
 
         # setHtml() steals focus from the editor - give it back
