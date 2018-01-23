@@ -23,6 +23,8 @@
         <file>exclamation-circle.png</file>
         <file>app.png</file>
         <file>blue-folder-open.png</file>
+        <file>arrow-curve.png</file>
+        <file>arrow-curve-180-left.png</file>
     </qresource>
     <qresource prefix="/font">
         <file>SourceCodePro-Bold.otf</file>
@@ -31,5 +33,6 @@
     </qresource>
     <qresource prefix="/">
         <file>new_wiki.md</file>
+        <file>style.css</file>
     </qresource>
 </RCC>

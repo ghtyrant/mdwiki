@@ -47,6 +47,10 @@ a:hover {
   outline-width: 0;
 }
 
+a.missing {
+  color: #ff0000;
+}
+
 strong {
   font-weight: inherit;
 }

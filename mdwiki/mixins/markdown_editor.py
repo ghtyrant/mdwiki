@@ -57,7 +57,13 @@ class MarkdownEditorMixin:
                     if (!e.target || e.target.nodeName != "A") {
                         return;
                     }
-                    proxy.activateLink(e.target.getAttribute('href'));
+
+                    let href = e.target.getAttribute('href');
+
+                    if (href[0] == '#')
+                        return;
+
+                    proxy.activateLink(href);
                     e.preventDefault();
                 }, false);
             }
@@ -189,7 +195,8 @@ class MarkdownEditorMixin:
         else:
             renderer = self.renderers[self.current_article.file_type]
 
-        html = renderer.render(text, style=self.style)
+        html = renderer.render(
+            self.current_article.get_wiki(), text, style=self.style)
 
         # TODO this is an ugly hack! yuck!
         html = html + """

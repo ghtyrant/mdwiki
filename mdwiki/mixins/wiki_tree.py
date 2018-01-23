@@ -3,7 +3,7 @@ from functools import partial
 
 from PyQt5.QtCore import QAbstractItemModel, QModelIndex, Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QDialog, QMenu, QMessageBox
+from PyQt5.QtWidgets import QDialog, QMenu, QMessageBox, QHeaderView
 
 from ..gui.new_article_ui import Ui_NewArticleDialog
 
@@ -372,6 +372,12 @@ class WikiTreeMixin:
         self.ui.wikiTree.customContextMenuRequested.connect(
             self.show_context_menu)
 
+    def setup_wiki_tree_ui_hacks(self):
+        # TODO This is weird. The next line causes the wiki to silently
+        # crash when it is in setup_wiki_tree(). Putting it here
+        # seems to work
+        self.ui.wikiTree.header().setSectionResizeMode(0, QHeaderView.Stretch)
+
     def item_clicked(self, index):
         article = self.ui.wikiTree.model().data(index, Qt.EditRole)
         self.current_article_index = index
@@ -381,6 +387,8 @@ class WikiTreeMixin:
         # if article.parent is not None:
         self.set_current_wiki(article.get_wiki())
         self.load_article(article)
+
+        self.setup_wiki_tree_ui_hacks()
 
     def select_article(self, article):
         index = self.ui.wikiTree.model().findData(article)

@@ -2,14 +2,14 @@ import os
 import sys
 import logging
 
-from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtCore import QCoreApplication, QIODevice, QTextStream, QFile
 from PyQt5.QtWidgets import (QMainWindow,
                              qApp,
                              QFileDialog,
                              QMessageBox,
                              QApplication,
                              QStyleFactory)
-from PyQt5.QtGui import QFontDatabase, QIcon, QPalette, QColor
+from PyQt5.QtGui import QFontDatabase, QIcon
 
 from .gui.mdwiki_ui import Ui_MainWindow
 
@@ -56,14 +56,22 @@ class MDWiki(QMainWindow,
 
     def setup_connections(self):
         # Application Menu
+        self.ui.actionNewWiki.triggered.connect(self.reload_style)
         self.ui.actionQuit.triggered.connect(qApp.quit)
         self.ui.actionOpen.triggered.connect(self.show_open_wiki_dialog)
 
     def setup_ui_hacks(self):
         # Force equal division of QSplitter panes
-        self.ui.splitter.setSizes([sys.maxsize, sys.maxsize])
+        self.ui.editorSplitter.setSizes([sys.maxsize, sys.maxsize])
 
         self.setWindowIcon(QIcon(':/icons/app.png'))
+        self.reload_style()
+
+    def reload_style(self):
+        style_file = QFile(':/style.css')
+        style_file.open(QIODevice.ReadOnly)
+        self.setStyleSheet(QTextStream(style_file).readAll())
+        style_file.close()
 
     def setup_fonts(self):
         QFontDatabase.addApplicationFont(':/font/SourceCodePro-Regular.otf')
@@ -131,32 +139,6 @@ def main():
     # Use Fusion style
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
-
-    # TODO This is not how it should be done. Replace this with a proper style.
-    dark_palette = QPalette()
-    dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
-    dark_palette.setColor(QPalette.WindowText, QColor(255, 255, 255))
-    dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
-    dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-    dark_palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 255))
-    dark_palette.setColor(QPalette.ToolTipText, QColor(255, 255, 255))
-    dark_palette.setColor(QPalette.Text, QColor(255, 255, 255))
-    dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
-    dark_palette.setColor(QPalette.ButtonText, QColor(255, 255, 255))
-    dark_palette.setColor(QPalette.BrightText, QColor(255, 0, 0))
-    dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
-
-    dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-    dark_palette.setColor(QPalette.HighlightedText, QColor(0, 0, 0))
-
-    app.setPalette(dark_palette)
-
-    app.setStyleSheet(
-        """QToolTip {
-            color: #ffffff;
-            background-color: #2a82da;
-            border: 1px solid white;
-        }""")
 
     wiki = MDWiki()
     wiki.show()

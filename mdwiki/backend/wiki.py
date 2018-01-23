@@ -29,7 +29,8 @@ class Wiki:
         self.unstaged_changes = []
 
         self.read_config()
-        self.root = Article(self.get_name(), self.default_file_type, None, self, True)
+        self.root = Article(
+            self.get_name(), self.default_file_type, None, self, True)
 
         git_config = self.git_repository.get_config()
 
@@ -69,7 +70,7 @@ class Wiki:
         wiki = Wiki(path, git_repos)
 
         wiki.update_config(name, remote_url, file_type,
-                            author_name, author_mail)
+                           author_name, author_mail)
 
         # Initialize index page with template
         wiki.root.set_text(template_text)
@@ -301,13 +302,7 @@ class Wiki:
     # Convenience functions, will be passed through to the root article #
     #####################################################################
     def get_article_by_url(self, url):
-        self.root.resolve(url)
-
-    def add_to_treestore(self):
-        self.root.add_to_treestore()
-
-    def remove_from_treestore(self):
-        self.root.remove_from_treestore()
+        return self.root.resolve(url)
 
     def commit_all(self):
         self.root.commit(commit_children=True)

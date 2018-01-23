@@ -16,6 +16,7 @@ ICON_STATUS_CHANGES = 'dialog-warning'
 
 logger = logging.getLogger(__name__)
 
+
 class ArticleHistoryEntry:
     def __init__(self, article, commit):
         self.article = article
@@ -538,10 +539,10 @@ class Article:
                                   self.get_wiki().get_author_mail())).encode('utf-8')
 
         self.get_wiki().get_git().do_commit(message,
-                                                  committer=committer,
-                                                  author=committer,
-                                                  commit_timestamp=time.time(), commit_timezone=0,
-                                                  author_timestamp=time.time(), author_timezone=0)
+                                            committer=committer,
+                                            author=committer,
+                                            commit_timestamp=time.time(), commit_timezone=0,
+                                            author_timestamp=time.time(), author_timezone=0)
 
         # If desired, also commit all of our children
         if commit_children:

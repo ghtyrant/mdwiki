@@ -1,4 +1,3 @@
-import os
 import re
 
 from markdown.extensions import Extension
@@ -11,14 +10,7 @@ CURSOR_ID = '__CURSOR__'
 
 def split_path(path):
     """ Split a path string by separator in all components. """
-    head, tail = os.path.split(path)
-    components = []
-
-    while tail:
-        components.insert(0, tail)
-        head, tail = os.path.split(head)
-
-    return components
+    return path.strip('/').split('/')
 
 
 class CursorExtension(Extension):
