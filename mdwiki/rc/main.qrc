@@ -25,6 +25,7 @@
         <file>blue-folder-open.png</file>
         <file>arrow-curve.png</file>
         <file>arrow-curve-180-left.png</file>
+        <file>accessories-dictionary.png</file>
     </qresource>
     <qresource prefix="/font">
         <file>SourceCodePro-Bold.otf</file>

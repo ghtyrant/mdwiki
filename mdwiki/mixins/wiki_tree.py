@@ -10,6 +10,13 @@ from ..gui.new_article_ui import Ui_NewArticleDialog
 logger = logging.getLogger(__name__)
 
 
+ICON_WIKI = 'accessories-dictionary.png'
+ICON_CATEGORY = 'blue-folder-open.png'
+ICON_ARTICLE = 'document-text-image.png'
+ICON_UNSAVED = 'disk.png'
+ICON_UNCOMMITTED = 'exclamation-circle.png'
+
+
 class ArticleViewModel:
     def __init__(self, model, parent=None):
         self.model = model
@@ -94,19 +101,19 @@ class ArticleViewModel:
 
         if column == 0:
             if not self.model.parent:
-                return QIcon(':/icons/book.png')
+                return QIcon(':/icons/%s' % ICON_WIKI)
             elif len(self.childItems) > 0:
-                return QIcon(':/icons/blue-folder-open.png')
+                return QIcon(':/icons/%s' % ICON_CATEGORY)
             else:
-                return QIcon.fromTheme(':/icons/document-text-image.png')
+                return QIcon(':/icons/%s' % ICON_ARTICLE)
         elif column == 1:
             if self.model.modified:
-                return QIcon.fromTheme(':/icons/disk.png')
+                return QIcon(':/icons/%s' % ICON_UNSAVED)
             else:
                 return QIcon()
         elif column == 2:
             if self.model.has_unstaged_changes():
-                return QIcon.fromTheme(':/icons/exclamation-circle.png')
+                return QIcon(':/icons/%s' % ICON_UNCOMMITTED)
             else:
                 return QIcon()
 

@@ -1,4 +1,5 @@
 import logging
+import re
 
 from PyQt5.QtCore import (QFile,
                           QIODevice,
@@ -134,6 +135,8 @@ class MarkdownEditorMixin:
         widget.setTabWidth(2)
         widget.setTabIndents(True)
 
+        widget.setEolMode(QsciScintilla.EolUnix)
+
     def link_clicked(self, url):
         article = self.get_current_wiki().get_root().resolve(url)
 
@@ -163,8 +166,10 @@ class MarkdownEditorMixin:
     def edit_toggled(self, enabled):
         if enabled:
             self.ui.markdownEditor.show()
+            self.update_wordcount()
         else:
             self.ui.markdownEditor.hide()
+            self.statusBar().showMessage("")
 
     def add_renderer(self, renderer):
         self.renderers[renderer.get_file_type()] = renderer
@@ -172,6 +177,7 @@ class MarkdownEditorMixin:
     def text_changed(self):
         self.current_article.set_text(self.ui.markdownEditor.text())
         self.ui.actionUndo.setEnabled(True)
+        self.update_wordcount()
 
         self.update_toolbar()
 
@@ -251,6 +257,15 @@ class MarkdownEditorMixin:
 
         # Manually trigger rerendering of preview
         self.cursor_changed(0, 0)
+
+    def update_wordcount(self):
+        text = self.ui.markdownEditor.text()
+        text_start = 0
+        if text.startswith("---\n"):
+            text_start = text.find('\n---\n') + 4
+        count = len(re.findall(r'\w+', text[text_start:]))
+        self.statusBar().showMessage('Words: %d' % (count))
+        self.current_article.get_all_links()
 
     def save_article(self):
         self.current_article.write()

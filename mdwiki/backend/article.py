@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 import logging
+import re
 
 from dulwich.file import GitFile
 
@@ -67,6 +68,7 @@ class Article:
 
         self.children = []
         self.history = []
+        self.links = []
 
         self.text = ""
         self.modified = False
@@ -106,6 +108,7 @@ class Article:
     def set_text(self, text):
         if text != self.text:
             self.modified = True
+            self.refresh_links()
 
         self.text = text
 
@@ -182,6 +185,16 @@ class Article:
 
         for child in self.children:
             child.export(target_dir, renderers)
+
+    def refresh_links(self):
+        links = re.findall(r'\[\[([^\[\]|]*)[^\[\]]*\]\]', self.get_text())
+
+        self.links = []
+        for link in links:
+            article = self.get_wiki().get_article_by_url(link.replace(':', '/'))
+
+            if article:
+                self.links.append(article)
 
     def get_wiki_url(self):
         """ This returns the URL of this article, relative to the root of the wiki.
