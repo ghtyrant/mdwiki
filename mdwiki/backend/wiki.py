@@ -224,7 +224,6 @@ class Wiki:
 
     def close(self):
         self.git_repository.close()
-        self.remove_from_treestore()
 
     def pull(self, progress_func, username=None, password=None):
         """ This pulls updates from a remote repository.

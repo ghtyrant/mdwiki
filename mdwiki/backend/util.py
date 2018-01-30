@@ -20,7 +20,7 @@ class CursorExtension(Extension):
 
 class CursorAnchorInjector(Treeprocessor):
     def run(self, root):
-        parent_map = {c: p for p in root.iter() for c in p}
+        parent_map = dict((c, p) for p in root.iter() for c in p)
 
         anchor = etree.Element('a')
         anchor.set('id', CURSOR_ID)
@@ -56,13 +56,13 @@ class CursorAnchorInjector(Treeprocessor):
                 for name, value in child.attrib.items():
                     if CURSOR_MARK in value:
                         child.set(name, value.replace(CURSOR_MARK, ''))
-                        return None
+                        return root
 
                 continue
 
-            return None
+            return root
 
-        return None
+        return root
 
 
 def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):

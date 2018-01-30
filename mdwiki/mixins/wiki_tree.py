@@ -148,6 +148,9 @@ class WikiTreeModel(QAbstractItemModel):
         else:
             return None
 
+    def close(self):
+        self.model.close()
+
     def flags(self, index):
         if not index.isValid():
             return 0
@@ -387,6 +390,10 @@ class WikiTreeMixin:
 
     def item_clicked(self, index):
         article = self.ui.wikiTree.model().data(index, Qt.EditRole)
+        if article is None:
+            logger.warning('Could not get selected article!')
+            return
+
         self.current_article_index = index
 
         # TODO this fixes a crash when clicking on the wiki node

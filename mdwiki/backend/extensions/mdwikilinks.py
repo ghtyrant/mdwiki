@@ -15,19 +15,22 @@ License: [BSD](http://www.opensource.org/licenses/bsd-license.php)
 
 '''
 
+import logging
+
 from markdown.extensions import Extension
 from markdown.inlinepatterns import Pattern
 from markdown.util import etree
 
+logger = logging.getLogger(__name__)
+
 
 def build_url(label, base, end):
     """ Build a url from the label, a base, and an end. """
-    clean_label = label.replace(':', '/')
-    return '%s%s%s' % (base, clean_label, end)
+    return '%s%s%s' % (base, label, end)
 
 
 def build_label(label):
-    return label.split(':')[-1]
+    return label.split('/')[-1]
 
 
 def url_exists(url):
@@ -51,18 +54,17 @@ class WikiLinkExtension(Extension):
         super(WikiLinkExtension, self).__init__(*args, **kwargs)
 
     def extendMarkdown(self, md, md_globals):
-        self.md = md
-
         # append to end of inline patterns
-        WIKILINK_RE = r'\[\[([\w0-9_: -]+)\]\]'
-        wikilinkPattern = WikiLinks(WIKILINK_RE, self.getConfigs())
+        WIKILINK_RE = r'\[\[([A-Za-z0-9_ -/]+)\]\]'
+        wikilinkPattern = MDWikiLinks(WIKILINK_RE, self.getConfigs())
         wikilinkPattern.md = md
-        md.inlinePatterns.add('wikilink', wikilinkPattern, "<not_strong")
+
+        md.inlinePatterns.add('mdwikilink', wikilinkPattern, "<not_strong")
 
 
-class WikiLinks(Pattern):
+class MDWikiLinks(Pattern):
     def __init__(self, pattern, config):
-        super(WikiLinks, self).__init__(pattern)
+        super().__init__(pattern)
         self.config = config
 
     def handleMatch(self, m):

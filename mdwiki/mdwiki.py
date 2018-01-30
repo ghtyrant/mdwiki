@@ -50,7 +50,6 @@ class MDWiki(QMainWindow,
 
         self.setup_connections()
 
-        self.wikis = {}
         self.current_wiki = None
         self.current_article_vm = None
 
@@ -78,10 +77,9 @@ class MDWiki(QMainWindow,
         QFontDatabase.addApplicationFont(':/font/SourceCodePro-It.otf')
         QFontDatabase.addApplicationFont(':/font/SourceCodePro-Bold.otf')
 
-    def close_wiki(self, wiki):
-        self.ui.wikiTree.removeChild(wiki.item)
-        del self.wikis[wiki.path]
-        wiki.close()
+    def close_wiki(self):
+        self.current_wiki.close()
+        self.current_wiki = None
 
     def show_open_wiki_dialog(self):
         while True:
@@ -109,13 +107,13 @@ class MDWiki(QMainWindow,
 
     def open_wiki(self, path):
         # If this wiki is already open, reopen it
-        if path in self.wikis:
-            self.close_wiki(self.wikis[path])
+        if self.current_wiki:
+            self.close_wiki()
 
         wiki = Wiki.open(path)
-        self.wikis[path] = WikiTreeModel(['name', 'saved', 'unstaged'], wiki)
+        self.current_wiki = WikiTreeModel(['name', 'saved', 'unstaged'], wiki)
 
-        self.ui.wikiTree.setModel(self.wikis[path])
+        self.ui.wikiTree.setModel(self.current_wiki)
 
         # Set column width of wiki tree
         self.ui.wikiTree.header().resizeSection(0, 250)
@@ -132,9 +130,11 @@ class MDWiki(QMainWindow,
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(
+        format='[%(asctime)s] - %(name)s: (%(levelname)s) %(message)s', level=logging.DEBUG)
     logging.info("Starting up QMDWiki!")
     logging.info(QStyleFactory.keys())
+    logging.getLogger("MARKDOWN").setLevel(logging.WARNING)
 
     # Use Fusion style
     app = QApplication(sys.argv)

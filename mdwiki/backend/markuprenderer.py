@@ -69,7 +69,7 @@ class MarkdownRenderer(MarkupRenderer):
                                        "subscript": False
                                    },
                                    "markdown.extensions.toc": {
-                                       "anchorlink": True
+                                       "anchorlink": False
                                    },
                                    "pymdownx.emoji": {
                                        "emoji_index": pymdownx.emoji.gemoji,

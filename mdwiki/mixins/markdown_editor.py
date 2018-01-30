@@ -45,7 +45,7 @@ class MarkdownEditorMixin:
           const elementRect = element.getBoundingClientRect();
           const absoluteElementTop = elementRect.top + window.pageYOffset;
           const middle = absoluteElementTop - (window.innerHeight / 2);
-          window.scrollTo(0, middle);
+          setTimeout(function () {window.scrollTo(0, middle);}, 2);
         }"""
 
     WEBCHANNEL_JS = """
@@ -53,7 +53,6 @@ class MarkdownEditorMixin:
         new QWebChannel(qt.webChannelTransport,
             function(channel) {
                 var proxy = channel.objects.proxy;
-
                 document.body.addEventListener('click', function (e) {
                     if (!e.target || e.target.nodeName != "A") {
                         return;
@@ -121,21 +120,33 @@ class MarkdownEditorMixin:
 
     def setup_scintilla(self, widget):
         # Set up Markdown editor
-        lexer = QsciLexerMarkdown()
+        self.lexer = QsciLexerMarkdown()
         fontdb = QFontDatabase()
-        lexer.setDefaultFont(fontdb.font('Source Code Pro', 'Regular', 11))
-        widget.setLexer(lexer)
+        self.lexer.setDefaultFont(fontdb.font(
+            'Source Code Pro', 'Regular', 11))
+        widget.setLexer(self.lexer)
         widget.setWrapMode(QsciScintilla.WrapWord)
         widget.setMarginWidth(0, "0000")
         widget.setMarginLineNumbers(0, True)
-        widget.setMarginsFont(
-            fontdb.font('Source Code Pro', 'Regular', 11))
+        widget.setMarginsFont(fontdb.font('Source Code Pro', 'Regular', 11))
         widget.setMarginType(0, QsciScintilla.NumberMargin)
         widget.setIndentationsUseTabs(False)
         widget.setTabWidth(2)
         widget.setTabIndents(True)
-
         widget.setEolMode(QsciScintilla.EolUnix)
+
+        # TODO autocompletion of links does not work
+        """
+        self.api = QsciAPIs(self.lexer)
+        self.api.add("[[hello")
+        self.api.add("[[world")
+        self.api.prepare()
+        widget.setAutoCompletionSource(QsciScintilla.AcsAPIs)
+        widget.setAutoCompletionThreshold(1)
+        widget.setAutoCompletionCaseSensitivity(False)
+        widget.setAutoCompletionReplaceWord(False)
+        widget.setAutoCompletionUseSingle(QsciScintilla.AcusNever)
+        """
 
     def link_clicked(self, url):
         article = self.get_current_wiki().get_root().resolve(url)
@@ -225,6 +236,14 @@ class MarkdownEditorMixin:
         cursor_index = self.ui.markdownEditor.positionFromLineIndex(
             line, index)
 
+        # TODO Auto completion of links does not work
+        """
+        if cursor_index > 2:
+            print("'%s' (%d)" % (self.ui.markdownEditor.text()[cursor_index-2:cursor_index], cursor_index))
+            if self.ui.markdownEditor.text()[cursor_index-2:cursor_index] == "[[":
+                self.ui.markdownEditor.autoCompleteFromAPIs()
+        """
+
         self.render_text(self.ui.markdownEditor,
                          self.ui.markdownPreview, cursor_index)
 
@@ -265,7 +284,6 @@ class MarkdownEditorMixin:
             text_start = text.find('\n---\n') + 4
         count = len(re.findall(r'\w+', text[text_start:]))
         self.statusBar().showMessage('Words: %d' % (count))
-        self.current_article.get_all_links()
 
     def save_article(self):
         self.current_article.write()

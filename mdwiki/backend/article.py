@@ -115,6 +115,8 @@ class Article:
     def get_text(self):
         if not self.text:
             self.text = self.read()
+            self.refresh_links()
+
         return self.text
 
     def set_name(self, name):
@@ -187,7 +189,7 @@ class Article:
             child.export(target_dir, renderers)
 
     def refresh_links(self):
-        links = re.findall(r'\[\[([^\[\]|]*)[^\[\]]*\]\]', self.get_text())
+        links = re.findall(r'\[\[([^\[\]|]*)[^\[\]]*\]\]', self.text)
 
         self.links = []
         for link in links:
@@ -472,13 +474,13 @@ class Article:
 
     def dump(self, indent=0):
         """ For debugging: Print out ourself and our children. """
-        print("%s%s%s (Category: %s, %s, %s)" % (
-              "  " * indent,
-              self.name,
-              self.file_type,
-              self.is_category(),
-              self.get_wiki_url(),
-              self.get_physical_path()))
+        logger.debug("%s%s%s (Category: %s, %s, %s)" % (
+                     "  " * indent,
+                     self.name,
+                     self.file_type,
+                     self.is_category(),
+                     self.get_wiki_url(),
+                     self.get_physical_path()))
 
         for child in self.children:
             child.dump(indent + 1)
