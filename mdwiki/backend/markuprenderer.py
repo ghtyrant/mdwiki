@@ -49,7 +49,7 @@ class MarkdownRenderer(MarkupRenderer):
         'pymdownx.tasklist',
         'pymdownx.superfences',
         'mdwiki.backend.extensions.mdwikilinks:WikiLinkExtension',
-        'mdwiki.backend.util:CursorExtension'
+        'mdwiki.backend.extensions.cursor:CursorExtension'
     ]
 
     def __init__(self):

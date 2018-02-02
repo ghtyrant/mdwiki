@@ -195,14 +195,15 @@ class MarkdownEditorMixin:
     def render_text(self, text_widget, preview_widget, cursor_index):
         text = text_widget.text()
 
+        print("Cursor Index: %d" % (cursor_index))
+
         # Only jump to cursor when the editor is shown
         if self.ui.actionEdit.isChecked():
+            # Prevent CURSOR_MARK from breaking headings
+            if text[cursor_index:cursor_index + 1] == '#' or text[cursor_index - 1:cursor_index] == '#':
+                cursor_index = text.find(' ', cursor_index) + 1
+
             new_text = text[:cursor_index] + '%CURSOR%'
-
-            # TODO %CURSOR% breaks headings
-            # if text[cursor_index:1] == '#':
-            #     new_text += '\n'
-
             new_text += text[cursor_index:]
 
             text = new_text
@@ -215,7 +216,6 @@ class MarkdownEditorMixin:
         html = renderer.render(
             self.current_article.get_wiki(), text, style=self.style)
 
-        # TODO this is an ugly hack! yuck!
         html = html + """
             <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
             <script>(function() {%s\n%s})();</script>""" % (
