@@ -299,7 +299,7 @@ class WikiTreeModel(QAbstractItemModel):
             for child in article.children:
                 add_article(child, article_vm)
 
-        add_article(wiki.get_root(), self.rootItem)
+        add_article(wiki.root, self.rootItem)
 
 
 class NewArticleDialog(QDialog, Ui_NewArticleDialog):

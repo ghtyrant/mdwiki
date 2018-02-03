@@ -21,23 +21,23 @@ logger = logging.getLogger(__name__)
 
 class Wiki:
     def __init__(self, path, dulwich_repos=None):
-        self.name = ""
-        self.default_file_type = ".md"
-        self.author_name = ""
-        self.author_mail = ""
+        self._name = ""
+        self._default_file_type = ".md"
+        self._author_name = ""
+        self._author_mail = ""
+        self._remote_url = ""
 
-        self.path = path
-        self.config_path = os.path.join(self.path, CONFIG_FILE_NAME)
+        self._path = path
+        self.config_path = os.path.join(path, CONFIG_FILE_NAME)
         self.git_repository = dulwich_repos or DulwichWiki(path)
         self.unstaged_changes = []
 
         self.read_config()
         self.root = Article(
-            self.name, self.default_file_type, None, self, True)
+            self._name, self._default_file_type, None, self, True)
 
         git_config = self.git_repository.get_config()
 
-        self.remote_url = ""
         try:
             self.remote_url = git_config.get(
                 (b"remote", b"origin"), b"url").decode('utf-8')
@@ -76,50 +76,58 @@ class Wiki:
                            author_name, author_mail)
 
         # Initialize index page with template
-        wiki.root.set_text(template_text)
+        wiki.root.text = template_text
 
         return wiki
 
-    def get_git(self):
-        return self.git_repository
+    @property
+    def physical_path(self):
+        return self._path
 
-    def get_physical_path(self):
-        return self.path
+    @property
+    def name(self):
+        return self._name
 
-    def get_root(self):
-        return self.root
-
-    def set_name(self, name):
-        self.name = name
+    @name.setter
+    def name(self, name):
+        self._name = name
         self.root.name = name
         self.write_config()
 
-    def get_default_file_type(self):
-        return self.default_file_type
+    @property
+    def default_file_type(self):
+        return self._default_file_type
 
-    def set_default_file_type(self, file_type):
-        self.default_file_type = file_type
+    @default_file_type.setter
+    def default_file_type(self, file_type):
+        self._default_file_type = file_type
         self.write_config()
 
-    def get_author_name(self):
-        return self.author_name
+    @property
+    def author_name(self):
+        return self._author_name
 
-    def set_author_name(self, name):
-        self.author_name = name
+    @author_name.setter
+    def author_name(self, name):
+        self._author_name = name
         self.write_config()
 
-    def get_author_mail(self):
-        return self.author_mail
+    @property
+    def author_mail(self):
+        return self._author_mail
 
-    def set_author_mail(self, mail):
-        self.author_mail = mail
+    @author_mail.setter
+    def author_mail(self, mail):
+        self._author_mail = mail
         self.write_config()
 
-    def get_remote_url(self):
-        return self.remote_url
+    @property
+    def remote_url(self):
+        return self._remote_url
 
-    def set_remote_url(self, remote_url):
-        self.remote_url = remote_url
+    @remote_url.setter
+    def remote_url(self, remote_url):
+        self._remote_url = remote_url
 
         config = self.git_repository.get_config()
         config.set((b"remote", b"origin"), b"url", remote_url.encode('utf-8'))
@@ -132,44 +140,44 @@ class Wiki:
         config.write_to_path()
 
     def update_config(self, name, remote_url, file_type, author_name, author_mail):
-        self.default_file_type = file_type
-        self.author_name = author_name
-        self.author_mail = author_mail
-        self.set_name(name)
+        self._default_file_type = file_type
+        self._author_name = author_name
+        self._author_mail = author_mail
+        self._name = name
 
-        self.set_remote_url(remote_url)
+        self.remote_url = remote_url
 
-    def get_config_path(self):
-        return self.config_path
+        self.write_config()
 
     def read_config(self):
-        if not os.path.exists(self.get_config_path()):
+        if not os.path.exists(self.config_path):
             return
 
         config = configparser.ConfigParser()
-        config.read(self.get_config_path())
+        config.read(self.config_path)
 
         try:
             repos_config = config['repos']
-            self.name = repos_config.get('name')
-            self.default_file_type = repos_config.get(
+            self._name = repos_config.get('name')
+            self._default_file_type = repos_config.get(
                 'default_file_type', fallback=FALLBACK_RENDERER)
-            self.author_name = repos_config.get('author', fallback="Anonymous")
-            self.author_mail = repos_config.get('mail', fallback="<>")
+            self._author_name = repos_config.get(
+                'author', fallback="Anonymous")
+            self._author_mail = repos_config.get('mail', fallback="<>")
         except KeyError as e:
-            logger.exception("Error reading wiki config '%s': Missing '%s'." % (
-                self.get_config_path(), e))
+            logger.exception(
+                "Error reading wiki config '%s': Missing '%s'." % (self.config_path, e))
 
     def write_config(self):
         config = configparser.ConfigParser()
         config["repos"] = {
             "name": self.name,
-            "default_file_type": self.get_default_file_type(),
-            "author": self.get_author_name(),
-            "mail": self.get_author_mail(),
+            "default_file_type": self.default_file_type,
+            "author": self.author_name,
+            "mail": self.author_mail,
         }
 
-        with open(self.get_config_path(), "w") as stream:
+        with open(self.config_path, "w") as stream:
             config.write(stream)
 
         self.root.add_changed_file(CONFIG_FILE_NAME)
@@ -194,7 +202,7 @@ class Wiki:
         """ Fetch the current list of unstaged changes from git. """
         self.unstaged_changes = []
         try:
-            for change in get_unstaged_changes(self.git_repository.open_index(), self.path):
+            for change in get_unstaged_changes(self.git_repository.open_index(), self.physical_path):
                 self.unstaged_changes.append(change.decode('utf-8'))
         except FileNotFoundError:
             pass
@@ -220,7 +228,7 @@ class Wiki:
         """ This pulls updates from a remote repository.
         This code has been take from dulwich.porcelain.
         """
-        if not self.get_remote_url():
+        if not self.remote_url:
             return
 
         selected_refs = []
@@ -252,7 +260,7 @@ class Wiki:
         """ This pushes updates to a remote repository.
         This code has been take from dulwich.porcelain.
         """
-        if not self.get_remote_url():
+        if not self.remote_url:
             return
 
         logger.info("Pushing to '%s' ..." % (self.remote_url))

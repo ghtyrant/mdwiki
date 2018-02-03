@@ -165,7 +165,7 @@ class MarkdownEditorMixin:
         widget.setLexer(self.lexer)
 
     def link_clicked(self, url):
-        article = self.get_current_wiki().get_root().resolve(url)
+        article = self.current_wiki.root.resolve(url)
 
         if article is None:
             logger.info('Link to %s could not be resolved!' % url)
@@ -214,7 +214,7 @@ class MarkdownEditorMixin:
         self.renderers[renderer.get_file_type()] = renderer
 
     def text_changed(self):
-        self.current_article.set_text(self.ui.markdownEditor.text())
+        self.current_article.text = self.ui.markdownEditor.text()
         self.ui.actionUndo.setEnabled(True)
         self.update_wordcount()
         self.update_toolbar()
@@ -256,7 +256,7 @@ class MarkdownEditorMixin:
         )
 
         # Render and update the preview
-        url = QUrl(self.current_article.wiki.get_physical_path() + '/')
+        url = QUrl(self.current_article.wiki.physical_path + '/')
         preview_widget.page().setHtml(html, url)
         self.ui.htmlPreview.setText(html)
 
@@ -282,7 +282,7 @@ class MarkdownEditorMixin:
         self.select_article(article)
 
         self.current_article = article
-        self.ui.markdownEditor.setText(article.get_text())
+        self.ui.markdownEditor.setText(article.text)
 
         self.update_toolbar()
 
