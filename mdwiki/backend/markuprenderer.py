@@ -18,9 +18,6 @@ class MarkupRenderer(ABC):
     def render(self, raw_text, style=""):
         pass
 
-    def get_name(self):
-        return self.name
-
     def get_file_type(self):
         return self.file_type
 

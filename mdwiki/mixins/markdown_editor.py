@@ -9,8 +9,9 @@ from PyQt5.QtCore import (QFile,
                           QObject)
 
 from PyQt5.QtGui import QFontDatabase, QDesktopServices
-from PyQt5.Qsci import QsciLexerMarkdown, QsciLexerHTML, QsciScintilla
-from PyQt5.QtWebEngineWidgets import QWebEnginePage
+from PyQt5.QtWidgets import QMessageBox
+from PyQt5.Qsci import QsciLexerMarkdown, QsciLexerHTML, QsciScintilla, QsciAPIs
+from PyQt5.QtWebEngineWidgets import QWebEnginePage, QWebEngineSettings
 from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtCore import QUrl
 
@@ -37,6 +38,16 @@ class WebChannelProxy(QObject):
     @pyqtSlot(str)
     def activateLink(self, url):
         self.link_clicked.emit(url)
+
+
+class QsciAPIWiki(QsciAPIs):
+    def updateAutoCompletionList(self, context, options):
+        print(context)
+        print(options)
+        return ['ballowallo', 'balloquallo', 'ballomallo']
+
+    def autoCompletionSelected(self, *args, **kwargs):
+        return super().autoCompletionSelected(*args, **kwargs)
 
 
 class MarkdownEditorMixin:
@@ -78,11 +89,15 @@ class MarkdownEditorMixin:
         self.add_renderer(ReSTRenderer())
 
         # Set up Markdown editor
+        self.setup_lexer()
         self.setup_scintilla(self.ui.markdownEditor)
 
         # Set up our custom page to open external links in a browser
         page = CustomWebPage(self)
         self.ui.markdownPreview.setPage(page)
+        QWebEngineSettings.globalSettings().setAttribute(
+            QWebEngineSettings.FocusOnNavigationEnabled, False)
+        # self.ui.markdownPreview.
 
         # Set up the web channel to intercept clicks on links
         channel = QWebChannel(self)
@@ -118,13 +133,18 @@ class MarkdownEditorMixin:
 
         self.update_toolbar()
 
-    def setup_scintilla(self, widget):
-        # Set up Markdown editor
-        self.lexer = QsciLexerMarkdown()
+    def setup_lexer(self):
         fontdb = QFontDatabase()
+        self.lexer = QsciLexerMarkdown()
         self.lexer.setDefaultFont(fontdb.font(
             'Source Code Pro', 'Regular', 11))
-        widget.setLexer(self.lexer)
+        # TODO autocompletion of links does not work
+        self.api = QsciAPIWiki(self.lexer)
+        self.api.prepare()
+
+    def setup_scintilla(self, widget):
+        # Set up Markdown editor
+        fontdb = QFontDatabase()
         widget.setWrapMode(QsciScintilla.WrapWord)
         widget.setMarginWidth(0, "0000")
         widget.setMarginLineNumbers(0, True)
@@ -135,26 +155,34 @@ class MarkdownEditorMixin:
         widget.setTabIndents(True)
         widget.setEolMode(QsciScintilla.EolUnix)
 
-        # TODO autocompletion of links does not work
-        """
-        self.api = QsciAPIs(self.lexer)
-        self.api.add("[[hello")
-        self.api.add("[[world")
-        self.api.prepare()
         widget.setAutoCompletionSource(QsciScintilla.AcsAPIs)
         widget.setAutoCompletionThreshold(1)
         widget.setAutoCompletionCaseSensitivity(False)
         widget.setAutoCompletionReplaceWord(False)
-        widget.setAutoCompletionUseSingle(QsciScintilla.AcusNever)
-        """
+        widget.setAutoCompletionWordSeparators([' '])
+        # widget.setAutoCompletionUseSingle(QsciScintilla.AcusNever)
+
+        widget.setLexer(self.lexer)
 
     def link_clicked(self, url):
         article = self.get_current_wiki().get_root().resolve(url)
 
         if article is None:
-            logger.warn('Link to %s could not be resolved!' % url)
-            # TODO Let user create the article
-            return
+            logger.info('Link to %s could not be resolved!' % url)
+            msg = "The article '%s' does not exist yet! Do you want to create it?" % url
+            reply = QMessageBox.question(self, 'Create Article',
+                                         msg, QMessageBox.Yes, QMessageBox.No)
+
+            if reply == QMessageBox.Yes:
+                article = self.current_wiki.create_article_by_url(
+                    url, self.current_wiki.default_file_type)
+                parent_index = self.ui.wikiTree.model().findData(article.parent)
+                self.ui.wikiTree.model().insertArticle(
+                    self.ui.wikiTree.model().rowCount(parent_index),
+                    article,
+                    parent_index)
+            else:
+                return
 
         self.load_article(article)
 
@@ -189,13 +217,17 @@ class MarkdownEditorMixin:
         self.current_article.set_text(self.ui.markdownEditor.text())
         self.ui.actionUndo.setEnabled(True)
         self.update_wordcount()
-
         self.update_toolbar()
+
+        line, index = self.ui.markdownEditor.getCursorPosition()
+        cursor_index = self.ui.markdownEditor.positionFromLineIndex(
+            line, index)
+
+        if self.ui.markdownEditor.text()[cursor_index - 1:cursor_index + 1] == '[[':
+            self.ui.markdownEditor.autoCompleteFromAPIs()
 
     def render_text(self, text_widget, preview_widget, cursor_index):
         text = text_widget.text()
-
-        print("Cursor Index: %d" % (cursor_index))
 
         # Only jump to cursor when the editor is shown
         if self.ui.actionEdit.isChecked():
@@ -214,7 +246,7 @@ class MarkdownEditorMixin:
             renderer = self.renderers[self.current_article.file_type]
 
         html = renderer.render(
-            self.current_article.get_wiki(), text, style=self.style)
+            self.current_article.wiki, text, style=self.style)
 
         html = html + """
             <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
@@ -224,25 +256,14 @@ class MarkdownEditorMixin:
         )
 
         # Render and update the preview
-        url = QUrl(self.current_article.get_wiki().get_physical_path() + '/')
+        url = QUrl(self.current_article.wiki.get_physical_path() + '/')
         preview_widget.page().setHtml(html, url)
         self.ui.htmlPreview.setText(html)
-
-        # setHtml() steals focus from the editor - give it back
-        text_widget.setFocus()
 
     def cursor_changed(self, line, index):
         # Get the byte index of the cursor
         cursor_index = self.ui.markdownEditor.positionFromLineIndex(
             line, index)
-
-        # TODO Auto completion of links does not work
-        """
-        if cursor_index > 2:
-            print("'%s' (%d)" % (self.ui.markdownEditor.text()[cursor_index-2:cursor_index], cursor_index))
-            if self.ui.markdownEditor.text()[cursor_index-2:cursor_index] == "[[":
-                self.ui.markdownEditor.autoCompleteFromAPIs()
-        """
 
         self.render_text(self.ui.markdownEditor,
                          self.ui.markdownPreview, cursor_index)

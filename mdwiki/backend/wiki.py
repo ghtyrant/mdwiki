@@ -4,6 +4,7 @@ from .util import natural_sort_key
 
 import os
 import configparser
+import logging
 
 from dulwich.repo import Repo as DulwichWiki
 from dulwich.index import get_unstaged_changes
@@ -14,6 +15,8 @@ from dulwich.protocol import ZERO_SHA
 import dulwich.client
 from dulwich.contrib.paramiko_vendor import ParamikoSSHVendor
 dulwich.client.get_ssh_vendor = ParamikoSSHVendor
+
+logger = logging.getLogger(__name__)
 
 
 class Wiki:
@@ -30,7 +33,7 @@ class Wiki:
 
         self.read_config()
         self.root = Article(
-            self.get_name(), self.default_file_type, None, self, True)
+            self.name, self.default_file_type, None, self, True)
 
         git_config = self.git_repository.get_config()
 
@@ -74,7 +77,6 @@ class Wiki:
 
         # Initialize index page with template
         wiki.root.set_text(template_text)
-        wiki.root.write()
 
         return wiki
 
@@ -87,12 +89,9 @@ class Wiki:
     def get_root(self):
         return self.root
 
-    def get_name(self):
-        return self.name or os.path.basename(self.path)
-
     def set_name(self, name):
         self.name = name
-        self.root.set_name(name)
+        self.root.name = name
         self.write_config()
 
     def get_default_file_type(self):
@@ -144,6 +143,9 @@ class Wiki:
         return self.config_path
 
     def read_config(self):
+        if not os.path.exists(self.get_config_path()):
+            return
+
         config = configparser.ConfigParser()
         config.read(self.get_config_path())
 
@@ -155,21 +157,17 @@ class Wiki:
             self.author_name = repos_config.get('author', fallback="Anonymous")
             self.author_mail = repos_config.get('mail', fallback="<>")
         except KeyError as e:
-            import traceback
-            print("Error reading wiki config '%s': Missing '%s'." % (
+            logger.exception("Error reading wiki config '%s': Missing '%s'." % (
                 self.get_config_path(), e))
-            traceback.print_exc()
 
     def write_config(self):
         config = configparser.ConfigParser()
         config["repos"] = {
-            "name": self.get_name(),
+            "name": self.name,
             "default_file_type": self.get_default_file_type(),
             "author": self.get_author_name(),
             "mail": self.get_author_mail(),
         }
-
-        print(config)
 
         with open(self.get_config_path(), "w") as stream:
             config.write(stream)
@@ -202,7 +200,7 @@ class Wiki:
             pass
 
     def is_path_unstaged(self, article_path):
-        # XXX Dulwich returns Linux style paths (with forward slashes), even on Windows
+        # XXX Dulwich returns Unix style paths (with forward slashes), even on Windows
         # As a hotfix, we convert article_path to use forward slashes
         tmp_path = article_path.replace("\\", "/")
         return tmp_path in self.unstaged_changes
@@ -212,13 +210,6 @@ class Wiki:
 
     def create_article(self, name, file_type, parent):
         article = Article(name, file_type, parent, self)
-        parent.add_child(article)
-
-        # TODO This is a dirty hack - we should not have to commit an article immediately
-        # Last time I checked, dulwich doesn't handle untracked files though
-        article.write()
-        article.commit(message="Initial commit for '%s'" %
-                       (article.get_wiki_url()))
 
         return article
 
@@ -239,7 +230,7 @@ class Wiki:
                                                  self.git_repository.refs, self.remote_fetch_refs))
             return [remote_refs[lh] for (lh, rh, force) in selected_refs]
 
-        print("Pulling from '%s' ..." % (self.remote_url))
+        logger.info("Pulling from '%s' ..." % (self.remote_url))
         client, path = get_transport_and_path_from_url(self.remote_url)
 
         if password:
@@ -249,7 +240,7 @@ class Wiki:
             remote_refs = client.fetch(path.encode('utf-8'), self.git_repository, progress=progress_func,
                                        determine_wants=determine_wants)
         except FileExistsError:
-            print("Pack already exists. Possibly a bug in dulwich.")
+            logger.exception("Pack already exists. Possibly a bug in dulwich.")
             return
 
         for (lh, rh, force) in selected_refs:
@@ -264,7 +255,7 @@ class Wiki:
         if not self.get_remote_url():
             return
 
-        print("Pushing to '%s' ..." % (self.remote_url))
+        logger.info("Pushing to '%s' ..." % (self.remote_url))
 
         # Get the client and path
         client, path = get_transport_and_path_from_url(self.remote_url)
@@ -278,7 +269,6 @@ class Wiki:
         def update_refs(refs):
             selected_refs.extend(parse_reftuples(
                 self.git_repository.refs, refs, refspecs))
-            print(selected_refs)
             new_refs = {}
             # TODO: Handle selected_refs == {None: None}
             for (lh, rh, force) in selected_refs:
@@ -286,7 +276,6 @@ class Wiki:
                     new_refs[rh] = ZERO_SHA
                 else:
                     new_refs[rh] = self.git_repository.refs[lh]
-            print(new_refs)
             return new_refs
 
         try:

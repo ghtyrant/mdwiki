@@ -30,7 +30,7 @@ class ArticleHistoryEntry:
 
     def get_lines(self):
         """ Returns the article's content in this past commit. """
-        git_repos = self.article.get_wiki().get_git()
+        git_repos = self.article.wiki.get_git()
 
         object_store = git_repos.object_store
         old_tree = self.commit.tree
@@ -75,42 +75,41 @@ class Article:
 
         self.changed_files = set()
 
+        if self.parent:
+            self.parent.add_child(self)
+
+        path = self.get_absolute_physical_path()
+
+        if self.is_directory:
+            path = os.path.join(path, self.get_index_file_name())
+
+        if not os.path.exists(path):
+            self.write()
+            self.commit(message="Initial commit for '%s'" %
+                        (self.get_wiki_url()))
+
     def __str__(self):
         return self.name
 
     def __repr__(self):
         return "<Article '%s'>" % self.name
 
-    @classmethod
-    def new_from_file_name(cls, file_name, parent, wiki):
-        name, file_type = os.path.splitext(file_name)
-        return cls.new(name, file_type, parent, wiki)
-
-    @classmethod
-    def new(cls, name, file_type, parent, wiki):
-        return Article(name, file_type, parent, wiki)
-
     def is_root(self):
         return self.parent is None
-
-    def set_wiki(self, wiki):
-        self.wiki = wiki
-
-    def get_wiki(self):
-        return self.wiki
 
     def is_category(self):
         return self.is_directory
 
-    def get_parent(self):
-        return self.parent
+    def set_wiki(self, wiki):
+        self.wiki = wiki
 
     def set_text(self, text):
         if text != self.text:
             self.modified = True
             self.refresh_links()
 
-        self.text = text
+        # Force Unix style line endings
+        self.text = text.replace('\r\n', '\n').replace('\r', '\n')
 
     def get_text(self):
         if not self.text:
@@ -118,12 +117,6 @@ class Article:
             self.refresh_links()
 
         return self.text
-
-    def set_name(self, name):
-        self.name = name
-
-    def get_name(self):
-        return self.name
 
     def get_file_name(self):
         if self.is_category():
@@ -138,7 +131,7 @@ class Article:
         old_physical_path = self.get_physical_path()
 
         if self.is_category():
-            old_physical_path = self.get_index_file_name(old_physical_path)
+            old_physical_path = self.get_index_file_name()
 
         self.add_changed_file(old_physical_path)
         self.file_type = file_type
@@ -146,10 +139,10 @@ class Article:
         new_physical_path = self.get_physical_path()
 
         if self.is_category():
-            new_physical_path = self.get_index_file_name(old_physical_path)
+            new_physical_path = self.get_index_file_name()
 
-        os.rename(os.path.join(self.get_wiki().get_physical_path(), old_physical_path),
-                  os.path.join(self.get_wiki().get_physical_path(), new_physical_path))
+        os.rename(os.path.join(self.wiki.get_physical_path(), old_physical_path),
+                  os.path.join(self.wiki.get_physical_path(), new_physical_path))
         self.add_changed_file(new_physical_path)
         self.commit("Changed file type of '%s' to '%s'" %
                     (self.get_wiki_url(), self.get_file_type()))
@@ -193,7 +186,7 @@ class Article:
 
         self.links = []
         for link in links:
-            article = self.get_wiki().get_article_by_url(link.replace(':', '/'))
+            article = self.wiki.get_article_by_url(link.replace(':', '/'))
 
             if article:
                 self.links.append(article)
@@ -203,18 +196,18 @@ class Article:
         e.g. 'test/article'
         """
         if not self.is_root():
-            return os.path.join(self.get_parent().get_wiki_url(), self.get_name())
+            return os.path.join(self.parent.get_wiki_url(), self.name)
         else:
-            return self.get_name()
+            return self.name
 
     def get_absolute_physical_path(self):
         """ This returns the absolute, physical path to either the file or the folder of this article. """
-        return os.path.join(self.get_wiki().get_physical_path(), self.get_physical_path())
+        return os.path.join(self.wiki.get_physical_path(), self.get_physical_path())
 
     def get_physical_path(self):
         """ This returns the relative, physical path to either the file or the folder of this article. """
         if not self.is_root():
-            return os.path.join(self.get_parent().get_physical_path(), self.get_file_name())
+            return os.path.join(self.parent.get_physical_path(), self.get_file_name())
         else:
             return ""  # self.get_file_name()
 
@@ -229,12 +222,13 @@ class Article:
     def remove_child(self, article):
         self.children.remove(article)
 
-        if not self.has_children() and self.is_category():
+        # Convert back to a file once we have no more children and are not root
+        if not self.has_children() and self.is_category() and not self.is_root():
             self.convert_to_file()
 
     def get_child_by_name(self, name):
         for child in self.children:
-            if child.get_name().lower() == name.lower():
+            if child.name.lower() == name.lower():
                 return child
 
         return None
@@ -256,12 +250,18 @@ class Article:
     def has_children(self):
         return len(self.children) > 0
 
-    def move(self, name, parent=None):
+    def move(self, name=None, parent=None):
         if parent is None:
-            parent = self.get_parent()
+            parent = self.parent
+
+        if name is None:
+            name = self.name
+
+        if parent == self:
+            raise ValueError("Can't be parent of myself!")
 
         # Nothing changed? Nothing to do then!
-        if name == self.get_name() and parent == self.get_parent():
+        if name == self.name and parent == self.parent:
             return
 
         # Store current paths for later use
@@ -269,18 +269,18 @@ class Article:
         old_physical_path = self.get_physical_path()
         old_absolute_physical_path = self.get_absolute_physical_path()
 
-        if parent != self.get_parent():
+        if parent != self.parent:
             self.add_changed_files(self.get_all_physical_paths())
 
         # Change our name
         self.name = name
 
         # If this is simply a rename, add the old and the new name to the commit
-        if parent == self.get_parent():
+        if parent == self.parent:
             self.add_changed_file(old_physical_path)
             self.add_changed_file(self.get_physical_path())
 
-        if parent != self.get_parent():
+        if parent != self.parent:
             # If the new parent isn't a folder yet, convert it
             if not parent.is_category():
                 parent.convert_to_folder()
@@ -291,13 +291,13 @@ class Article:
         # This will move & rename this article
         shutil.move(old_absolute_physical_path, new_path)
 
-        if parent != self.get_parent():
+        if parent != self.parent:
             # Remove ourself from the old parent
-            self.get_parent().remove_child(self)
+            self.parent.remove_child(self)
 
             # ... and add us to the new one
             self.parent = parent
-            self.get_parent().add_child(self)
+            self.parent.add_child(self)
 
             self.add_changed_files(self.get_all_physical_paths())
 
@@ -362,7 +362,13 @@ class Article:
 
         # Simply add the file extension to the current file name
 
-        # Commit the new file and the old index file, so git knows we have moved it
+        # Committhe old index file ...
+        self.add_changed_file(self.get_physical_path())
+
+        # ... turn ourselves back into a file ...
+        self.is_directory = False
+
+        # ... and commit the new file
         self.add_changed_file(self.get_physical_path())
         self.commit("Turned '%s' into an article." %
                     (self.get_wiki_url()), [old_index_path])
@@ -375,7 +381,7 @@ class Article:
             physical_path = os.path.join(
                 physical_path, self.get_index_file_name())
 
-        return self.get_wiki().is_path_unstaged(physical_path)
+        return self.wiki.is_path_unstaged(physical_path)
 
     def resolve(self, url):
         """ Recursively resolve a wiki url. """
@@ -434,10 +440,8 @@ class Article:
             article = Article(name,
                               file_type,
                               self,
-                              self.get_wiki(),
+                              self.wiki,
                               len(url) > 0)
-
-            self.add_child(article)
 
         if len(url) > 0:
             return article.create_article_by_url(url, file_type)
@@ -469,8 +473,8 @@ class Article:
             self.commit("Deleted '%s'" % (self.get_wiki_url()))
 
         # Remove ourself from our parent's list
-        if self.get_parent():
-            self.get_parent().remove_child(self)
+        if self.parent:
+            self.parent.remove_child(self)
 
     def dump(self, indent=0):
         """ For debugging: Print out ourself and our children. """
@@ -503,6 +507,7 @@ class Article:
         logger.debug("Reading article from '%s'" % physical_path)
 
         if not os.path.exists(physical_path):
+            logger.warning("Could not find article '%s'!" % physical_path)
             return ""
 
         with GitFile(physical_path) as stream:
@@ -523,7 +528,7 @@ class Article:
             stream.write(self.text.encode('utf-8'))
 
         # We wrote the changes, update the wiki's list of unstaged changes
-        self.get_wiki().fetch_unstaged_changes()
+        self.wiki.fetch_unstaged_changes()
 
         self.modified = False
 
@@ -543,25 +548,26 @@ class Article:
         if not message:
             message = "Update article '%s'" % (self.get_wiki_url())
 
-        print("Commiting '%s' (%s)" % (message, ', '.join(self.changed_files)))
-        self.get_wiki().get_git().stage(list(self.changed_files))
+        logger.info("Commiting '%s' (%s)" %
+                    (message, ', '.join(self.changed_files)))
+        self.wiki.get_git().stage(list(self.changed_files))
         self.changed_files = set()
 
         message = message.encode('utf-8')
 
         # TODO allow users to change the author's name/mail address
-        committer = ("%s <%s>" % (self.get_wiki().get_author_name(),
-                                  self.get_wiki().get_author_mail())).encode('utf-8')
+        committer = ("%s <%s>" % (self.wiki.get_author_name(),
+                                  self.wiki.get_author_mail())).encode('utf-8')
 
-        self.get_wiki().get_git().do_commit(message,
-                                            committer=committer,
-                                            author=committer,
-                                            commit_timestamp=time.time(), commit_timezone=0,
-                                            author_timestamp=time.time(), author_timezone=0)
+        self.wiki.get_git().do_commit(message,
+                                      committer=committer,
+                                      author=committer,
+                                      commit_timestamp=time.time(), commit_timezone=0,
+                                      author_timestamp=time.time(), author_timezone=0)
 
         # If desired, also commit all of our children
         if commit_children:
             for child in self.children:
                 child.commit(commit_children=True)
 
-        self.get_wiki().fetch_unstaged_changes()
+        self.wiki.fetch_unstaged_changes()

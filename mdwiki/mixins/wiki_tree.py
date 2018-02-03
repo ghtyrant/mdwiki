@@ -118,7 +118,7 @@ class ArticleViewModel:
                 return QIcon()
 
     def __repr__(self):
-        return self.model.get_name()
+        return self.model.name
 
 
 class WikiTreeModel(QAbstractItemModel):
@@ -399,7 +399,7 @@ class WikiTreeMixin:
         # TODO this fixes a crash when clicking on the wiki node
         # This should display some kind of index(?) (_index.md?)
         # if article.parent is not None:
-        self.set_current_wiki(article.get_wiki())
+        self.set_current_wiki(article.wiki)
         self.load_article(article)
 
         self.setup_wiki_tree_ui_hacks()
@@ -454,8 +454,8 @@ class WikiTreeMixin:
 
         # New article
         else:
-            new_article = parent.get_wiki().create_article(name,
-                                                           file_type, parent)
+            new_article = parent.wiki.create_article(name,
+                                                     file_type, parent)
             self.ui.wikiTree.model().insertArticle(
                 self.ui.wikiTree.model().rowCount(parent_index),
                 new_article,
