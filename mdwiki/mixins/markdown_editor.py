@@ -6,10 +6,12 @@ from PyQt5.QtCore import (QFile,
                           QTextStream,
                           pyqtSignal,
                           pyqtSlot,
-                          QObject)
+                          QObject,
+                          QEvent,
+                          Qt)
 
 from PyQt5.QtGui import QFontDatabase, QDesktopServices
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QWidget
 from PyQt5.Qsci import QsciLexerMarkdown, QsciLexerHTML, QsciScintilla, QsciAPIs
 from PyQt5.QtWebEngineWidgets import QWebEnginePage, QWebEngineSettings
 from PyQt5.QtWebChannel import QWebChannel
@@ -42,8 +44,6 @@ class WebChannelProxy(QObject):
 
 class QsciAPIWiki(QsciAPIs):
     def updateAutoCompletionList(self, context, options):
-        print(context)
-        print(options)
         return ['ballowallo', 'balloquallo', 'ballomallo']
 
     def autoCompletionSelected(self, *args, **kwargs):
@@ -118,6 +118,9 @@ class MarkdownEditorMixin:
         self.ui.actionCommit.triggered.connect(self.commit_article)
         self.ui.actionEdit.toggled.connect(self.edit_toggled)
         self.ui.actionFullscreen.triggered.connect(self.show_fullscreen_editor)
+        self.ui.actionAutoLink.triggered.connect(self.add_auto_link)
+
+        self.ui.markdownEditor.installEventFilter(self)
 
         # Load Github style
         style_file = QFile(':/styles/github.css')
@@ -132,6 +135,14 @@ class MarkdownEditorMixin:
         self.ui.actionRedo.setEnabled(False)
 
         self.update_toolbar()
+
+    def eventFilter(self, widget, event):
+        if event.type() == QEvent.ShortcutOverride and widget is self.ui.markdownEditor:
+            if event.key() == Qt.Key_L and event.modifiers() & Qt.ControlModifier:
+                event.ignore()
+                return True
+
+        return QWidget.eventFilter(self, widget, event)
 
     def setup_lexer(self):
         fontdb = QFontDatabase()
@@ -206,9 +217,11 @@ class MarkdownEditorMixin:
         if enabled:
             self.ui.markdownEditor.show()
             self.update_wordcount()
+            self.ui.actionAutoLink.setEnabled(True)
         else:
             self.ui.markdownEditor.hide()
             self.statusBar().showMessage("")
+            self.ui.actionAutoLink.setEnabled(False)
 
     def add_renderer(self, renderer):
         self.renderers[renderer.get_file_type()] = renderer
@@ -259,6 +272,36 @@ class MarkdownEditorMixin:
         url = QUrl(self.current_article.wiki.physical_path + '/')
         preview_widget.page().setHtml(html, url)
         self.ui.htmlPreview.setText(html)
+
+    def add_auto_link(self):
+        text = self.ui.markdownEditor.text()
+        line, index = self.ui.markdownEditor.getCursorPosition()
+        cursor_position = self.ui.markdownEditor.positionFromLineIndex(
+            line, index)
+        word_start = text.rfind(' ', 0, cursor_position)
+        word_end = text.find(' ', cursor_position)
+        word_end_line = text.find("\n", cursor_position)
+
+        if word_end_line < word_end:
+            word_end = word_end_line
+
+        word = text[word_start + 1:word_end]
+        article = self.current_wiki.find_article_by_name(word)
+
+        if article:
+            line, index_start = self.ui.markdownEditor.lineIndexFromPosition(
+                word_start + 1)
+            _, index_end = self.ui.markdownEditor.lineIndexFromPosition(
+                word_end)
+            self.ui.markdownEditor.setSelection(
+                line, index_start, line, index_end)
+
+            self.ui.markdownEditor.replaceSelectedText(
+                "[[%s]]" % (article.wiki_url))
+
+            self.ui.markdownEditor.setCursorPosition(line, index)
+        else:
+            print("Could not find article '%s'" % (word))
 
     def cursor_changed(self, line, index):
         # Get the byte index of the cursor

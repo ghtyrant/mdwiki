@@ -167,7 +167,7 @@ class Article:
         e.g. 'test/article'
         """
         if not self.is_root():
-            return os.path.join(self.parent.wiki_url, self.name)
+            return self.parent.wiki_url + '/' + self.name
         else:
             return self.name
 
@@ -229,6 +229,16 @@ class Article:
         # Convert back to a file once we have no more children and are not root
         if not self.has_children() and self.is_category() and not self.is_root():
             self.convert_to_file()
+
+    def find_by_name(self, name):
+        if self.name.lower() == name.lower():
+            return self
+
+        for child in self.children:
+            article = child.find_by_name(name)
+
+            if article:
+                return article
 
     def get_child_by_name(self, name):
         for child in self.children:

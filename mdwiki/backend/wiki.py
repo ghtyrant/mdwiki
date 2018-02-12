@@ -305,3 +305,6 @@ class Wiki:
 
     def create_article_by_url(self, url, file_type):
         return self.root.create_article_by_url(url, file_type)
+
+    def find_article_by_name(self, name):
+        return self.root.find_by_name(name)

@@ -244,6 +244,8 @@
              <addaction name="actionEdit"/>
              <addaction name="actionSave"/>
              <addaction name="actionCommit"/>
+             <addaction name="separator"/>
+             <addaction name="actionAutoLink"/>
             </widget>
            </item>
            <item>
@@ -553,6 +555,18 @@
    </property>
    <property name="text">
     <string>Forward</string>
+   </property>
+  </action>
+  <action name="actionAutoLink">
+   <property name="icon">
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/chain.png</normaloff>:/icons/chain.png</iconset>
+   </property>
+   <property name="text">
+    <string>Auto Link</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
    </property>
   </action>
  </widget>
