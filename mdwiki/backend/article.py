@@ -60,8 +60,8 @@ class ArticleHistoryEntry:
 
 
 class Article:
-    def __init__(self, name, file_type, parent, wiki, is_directory=False):
-        self._name = name
+    def __init__(self, wiki, parent, file_type, is_directory=False, name=None, file_name=None):
+        self._file_name = file_name if file_name else slugify(name)
         self._file_type = file_type
         self.parent = parent
         self.wiki = wiki
@@ -79,16 +79,15 @@ class Article:
         if self.parent:
             self.parent.add_child(self)
 
-        path = self.absolute_physical_path
-
-        if self.is_directory:
-            path = os.path.join(path, self.index_file_name)
-
-        if not os.path.exists(path):
+        if file_name is None:
             self.text = "# " + name
             self.write()
             self.commit(message="Initial commit for '%s'" %
                         (self.wiki_url))
+        else:
+            # TODO the ugliest of all hacks!
+            # This triggers a read from the file which in turn sets self._name
+            self.text
 
     def __str__(self):
         return self.name
@@ -108,42 +107,50 @@ class Article:
 
     @name.setter
     def name(self, name):
+        line_end = self.text.find('\n')
+        if line_end == -1:
+            line_end = len(self.text)
+
+        self.text = '# ' + name + self.text[line_end:]
         self._name = name
 
-    @property
-    def pretty_name(self):
-        if self.text.startswith('#'):
-            text_end = self.text.find('\n')
-            if text_end == -1:
-                text_end = len(self.text)
+    def refresh_name(self):
+        if self._text.startswith('#'):
+            line_end = self._text.find('\n')
+            if line_end == -1:
+                line_end = len(self._text)
 
-            return self.text[2:text_end]
+            self._name = self._text[2:line_end].strip()
         else:
-            return self._name
+            self._name = self._file_name
 
     @property
     def text(self):
         if self._text is None:
             self._text = self.read()
+            self.refresh_name()
             self.refresh_links()
 
         return self._text
 
     @text.setter
     def text(self, text):
-        if text != self._text:
-            self.modified = True
-            self.refresh_links()
+        if text == self._text:
+            return
+
+        self.modified = True
 
         # Force Unix style line endings
         self._text = text.replace('\r\n', '\n').replace('\r', '\n')
+        self.refresh_name()
+        self.refresh_links()
 
     @property
     def file_name(self):
         if self.is_category():
-            return slugify(self.name)
+            return self._file_name
 
-        return slugify(self.name) + self.file_type
+        return self._file_name + self.file_type
 
     @property
     def file_type(self):
@@ -270,6 +277,13 @@ class Article:
 
         return None
 
+    def get_child_by_file_name(self, file_name):
+        for child in self.children:
+            if child.file_name.lower() == file_name.lower():
+                return child
+
+        return None
+
     def get_all_physical_paths(self):
         files = []
 
@@ -288,6 +302,7 @@ class Article:
         return len(self.children) > 0
 
     def move(self, name=None, parent=None):
+        # TODO this method still has bugs, sometimes renamed files are not committed
         if parent is None:
             parent = self.parent
 
@@ -298,7 +313,8 @@ class Article:
             raise ValueError("Can't be parent of myself!")
 
         # Nothing changed? Nothing to do then!
-        if name == self.name and parent == self.parent:
+        if slugify(name) == self._file_name and parent == self.parent:
+            logger.info("Moved called, but nothing changed!")
             return
 
         # Store current paths for later use
@@ -310,7 +326,7 @@ class Article:
             self.add_changed_files(self.get_all_physical_paths())
 
         # Change our name
-        self.name = name
+        self._file_name = slugify(name)
 
         # If this is simply a rename, add the old and the new name to the commit
         if parent == self.parent:
@@ -448,16 +464,11 @@ class Article:
         else:
             return article
 
-    def create_article_by_path(self, path):
+    def create_article_from_file(self, path):
         name, file_type = os.path.splitext(path)
 
         if not file_type:
-            absolute_physical_path = os.path.join(
-                self.wiki.physical_path, path)
-            for filename in os.listdir(absolute_physical_path):
-                if filename.startswith(INDEX_FILE_NAME):
-                    file_type = os.path.splitext(filename)[1]
-                    break
+            file_type = '.md'
 
         self.create_article_by_url(name, file_type)
 
@@ -469,15 +480,15 @@ class Article:
         if isinstance(url, str):
             url = split_path(url)
 
-        name = url.pop(0)
-        article = self.get_child_by_name(name)
+        file_name = url.pop(0)
+        article = self.get_child_by_file_name(file_name)
 
         if article is None:
-            article = Article(name,
-                              file_type,
+            article = Article(self.wiki,
                               self,
-                              self.wiki,
-                              len(url) > 0)
+                              file_type,
+                              is_directory=len(url) > 0,
+                              file_name=file_name)
 
         if len(url) > 0:
             return article.create_article_by_url(url, file_type)
@@ -527,6 +538,7 @@ class Article:
 
     def add_changed_file(self, file):
         if file not in self.changed_files:
+            logger.info('Staging file "%s"' % (file))
             self.changed_files.add(file)
 
     def add_changed_files(self, file_list):
@@ -551,6 +563,10 @@ class Article:
 
     def write(self):
         """ Write the contents of our physical file. """
+        # Move the file before writing to it if its name changed
+        if self._file_name != slugify(self._name):
+            self.move(name=self._name)
+
         physical_path = self.absolute_physical_path
 
         self.add_changed_file(self.physical_path)

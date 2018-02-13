@@ -140,7 +140,7 @@ class WikiTreeModel(QAbstractItemModel):
 
         if role == Qt.DisplayRole:
             if index.column() == 0:
-                return item.data(index.column()).pretty_name
+                return item.data(index.column()).name
         elif role == Qt.EditRole:
             return item.data(index.column())
         elif role == Qt.DecorationRole:
@@ -443,7 +443,7 @@ class WikiTreeMixin:
 
         # Edit article
         if article:
-            article.set_file_type(file_type)
+            article.file_type = file_type
 
             old_parent = article.parent
             article.move(name, parent)
@@ -453,6 +453,8 @@ class WikiTreeMixin:
                 article_index = model.findData(article)
                 model.moveArticle(article_index.parent(),
                                   article_index, parent_index)
+
+            self.load_article(article)
 
         # New article
         else:

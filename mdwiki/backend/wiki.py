@@ -33,8 +33,8 @@ class Wiki:
         self.unstaged_changes = []
 
         self.read_config()
-        self.root = Article(
-            self._name, self._default_file_type, None, self, True)
+        self.root = Article(self, None, self._default_file_type,
+                            name=self._name, is_directory=True)
 
         git_config = self.git_repository.get_config()
 
@@ -196,7 +196,8 @@ class Wiki:
             if basename.startswith(".") or basename.startswith(INDEX_FILE_NAME):
                 continue
 
-            self.root.create_article_by_path(file_name)
+            logger.info('Imported from index: %s' % (file_name))
+            self.root.create_article_from_file(file_name)
 
     def fetch_unstaged_changes(self):
         """ Fetch the current list of unstaged changes from git. """
@@ -217,7 +218,7 @@ class Wiki:
         return len(self.unstaged_changes) > 0
 
     def create_article(self, name, file_type, parent):
-        article = Article(name, file_type, parent, self)
+        article = Article(self, parent, file_type, name=name)
 
         return article
 
