@@ -296,17 +296,21 @@ class MarkdownEditorMixin:
         article = self.current_wiki.find_article_by_name(word)
 
         if article:
-            line, index_start = self.ui.markdownEditor.lineIndexFromPosition(
-                word_start + 1)
-            _, index_end = self.ui.markdownEditor.lineIndexFromPosition(
-                word_end)
-            self.ui.markdownEditor.setSelection(
-                line, index_start, line, index_end)
+            if self.ui.markdownEditor.hasSelectedText():
+                self.ui.markdownEditor.replaceSelectedText(
+                    "[[%s]]" % (article.wiki_url))
+            else:
+                line, index_start = self.ui.markdownEditor.lineIndexFromPosition(
+                    word_start + 1)
+                _, index_end = self.ui.markdownEditor.lineIndexFromPosition(
+                    word_end)
+                self.ui.markdownEditor.setSelection(
+                    line, index_start, line, index_end)
 
-            self.ui.markdownEditor.replaceSelectedText(
-                "[[%s]]" % (article.wiki_url))
+                self.ui.markdownEditor.replaceSelectedText(
+                    "[[%s]]" % (article.wiki_url))
 
-            self.ui.markdownEditor.setCursorPosition(line, index)
+                self.ui.markdownEditor.setCursorPosition(line, index)
         else:
             logger.info("Could not find article '%s'" % (word))
 

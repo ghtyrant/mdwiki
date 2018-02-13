@@ -5,6 +5,7 @@ import logging
 import re
 
 from dulwich.file import GitFile
+from slugify import slugify
 
 from .util import split_path
 from .constants import DEFAULT_FOLDER_PERMISSION, INDEX_FILE_NAME
@@ -60,7 +61,7 @@ class ArticleHistoryEntry:
 
 class Article:
     def __init__(self, name, file_type, parent, wiki, is_directory=False):
-        self.name = name
+        self._name = name
         self._file_type = file_type
         self.parent = parent
         self.wiki = wiki
@@ -84,6 +85,7 @@ class Article:
             path = os.path.join(path, self.index_file_name)
 
         if not os.path.exists(path):
+            self.text = "# " + name
             self.write()
             self.commit(message="Initial commit for '%s'" %
                         (self.wiki_url))
@@ -99,6 +101,25 @@ class Article:
 
     def is_category(self):
         return self.is_directory
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+
+    @property
+    def pretty_name(self):
+        if self.text.startswith('#'):
+            text_end = self.text.find('\n')
+            if text_end == -1:
+                text_end = len(self.text)
+
+            return self.text[2:text_end]
+        else:
+            return self._name
 
     @property
     def text(self):
@@ -120,9 +141,9 @@ class Article:
     @property
     def file_name(self):
         if self.is_category():
-            return self.name
+            return slugify(self.name)
 
-        return self.name + self.file_type
+        return slugify(self.name) + self.file_type
 
     @property
     def file_type(self):

@@ -118,7 +118,7 @@ class ArticleViewModel:
                 return QIcon()
 
     def __repr__(self):
-        return self.model.name
+        return self.model.pretty_name
 
 
 class WikiTreeModel(QAbstractItemModel):
@@ -140,7 +140,7 @@ class WikiTreeModel(QAbstractItemModel):
 
         if role == Qt.DisplayRole:
             if index.column() == 0:
-                return item.data(index.column()).name
+                return item.data(index.column()).pretty_name
         elif role == Qt.EditRole:
             return item.data(index.column())
         elif role == Qt.DecorationRole:
@@ -211,6 +211,8 @@ class WikiTreeModel(QAbstractItemModel):
         if not index.isValid():
             return QModelIndex()
 
+        # TODO this crashes when deleting an item
+        # getItem() returns a tuple (<NULL>,) - probably some internal Qt shit
         childItem = self.getItem(index)
         parentItem = childItem.parent()
 
@@ -413,7 +415,7 @@ class WikiTreeMixin:
             logger.warn('Could not select article %s: Not found!' % (article))
 
     def show_delete_article_dialog(self, article):
-        message = "This will delete the article '%s'" % (article.get_name())
+        message = "This will delete the article '%s'" % (article.name)
         if len(article.children) > 0:
             message += ", including it's children:\n\n - %s\n" % (
                 '\n - '.join([str(c) for c in article.children]))
@@ -427,7 +429,7 @@ class WikiTreeMixin:
             article_index = model.findData(article)
             model.removeRows(article_index.row(), 1, article_index.parent())
             article.delete()
-            self.load_article(self.get_current_wiki().root)
+            self.load_article(self.current_wiki.root)
 
     def show_new_article_dialog(self, article=None):
         model = self.ui.wikiTree.model()
