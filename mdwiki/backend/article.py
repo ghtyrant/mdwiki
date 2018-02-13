@@ -167,9 +167,11 @@ class Article:
         e.g. 'test/article'
         """
         if not self.is_root():
-            return self.parent.wiki_url + '/' + self.name
+            slash = '/' if not self.parent.is_root() else ''
+            return self.parent.wiki_url + slash + self.name
         else:
-            return self.name
+            # We don't want to add the name of the wiki to the link
+            return ''
 
     @property
     def absolute_physical_path(self):

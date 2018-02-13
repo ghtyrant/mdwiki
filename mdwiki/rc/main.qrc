@@ -26,7 +26,8 @@
         <file>arrow-curve.png</file>
         <file>arrow-curve-180-left.png</file>
         <file>accessories-dictionary.png</file>
-        <file>chain.png</file>
+        <file>autolink.png</file>
+        <file>autolink_all.png</file>
     </qresource>
     <qresource prefix="/font">
         <file>SourceCodePro-Bold.otf</file>

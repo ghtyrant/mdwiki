@@ -118,7 +118,8 @@ class MarkdownEditorMixin:
         self.ui.actionCommit.triggered.connect(self.commit_article)
         self.ui.actionEdit.toggled.connect(self.edit_toggled)
         self.ui.actionFullscreen.triggered.connect(self.show_fullscreen_editor)
-        self.ui.actionAutoLink.triggered.connect(self.add_auto_link)
+        self.ui.actionAutoLink.triggered.connect(self.auto_link_word)
+        self.ui.actionAutoLinkAll.triggered.connect(self.auto_link_all)
 
         self.ui.markdownEditor.installEventFilter(self)
 
@@ -218,10 +219,12 @@ class MarkdownEditorMixin:
             self.ui.markdownEditor.show()
             self.update_wordcount()
             self.ui.actionAutoLink.setEnabled(True)
+            self.ui.actionAutoLinkAll.setEnabled(True)
         else:
             self.ui.markdownEditor.hide()
             self.statusBar().showMessage("")
             self.ui.actionAutoLink.setEnabled(False)
+            self.ui.actionAutoLinkAll.setEnabled(False)
 
     def add_renderer(self, renderer):
         self.renderers[renderer.get_file_type()] = renderer
@@ -273,19 +276,23 @@ class MarkdownEditorMixin:
         preview_widget.page().setHtml(html, url)
         self.ui.htmlPreview.setText(html)
 
-    def add_auto_link(self):
-        text = self.ui.markdownEditor.text()
-        line, index = self.ui.markdownEditor.getCursorPosition()
-        cursor_position = self.ui.markdownEditor.positionFromLineIndex(
-            line, index)
-        word_start = text.rfind(' ', 0, cursor_position)
-        word_end = text.find(' ', cursor_position)
-        word_end_line = text.find("\n", cursor_position)
+    def auto_link_word(self):
+        if self.ui.markdownEditor.hasSelectedText():
+            word = self.ui.markdownEditor.selectedText()
+        else:
+            text = self.ui.markdownEditor.text()
+            line, index = self.ui.markdownEditor.getCursorPosition()
+            cursor_position = self.ui.markdownEditor.positionFromLineIndex(
+                line, index)
+            word_start = text.rfind(' ', 0, cursor_position)
+            word_end = text.find(' ', cursor_position)
+            word_end_line = text.find("\n", cursor_position)
 
-        if word_end_line < word_end:
-            word_end = word_end_line
+            if word_end_line < word_end:
+                word_end = word_end_line
 
-        word = text[word_start + 1:word_end]
+            word = text[word_start + 1:word_end]
+
         article = self.current_wiki.find_article_by_name(word)
 
         if article:
@@ -301,7 +308,29 @@ class MarkdownEditorMixin:
 
             self.ui.markdownEditor.setCursorPosition(line, index)
         else:
-            print("Could not find article '%s'" % (word))
+            logger.info("Could not find article '%s'" % (word))
+
+    def auto_link_all(self):
+        # TODO Allow user to select root-article
+        # e.g., only auto link to articles in a certain category
+        text = self.ui.markdownEditor.text().split('\n')
+        for name, article in self.current_wiki.get_name_dict().items():
+            for line_index, line in enumerate(text):
+
+                # Skip headlines
+                if line.startswith('#'):
+                    continue
+
+                offset = 0
+                for match in re.finditer(name + r'(?![^\[]*\])', line):
+                    link = "[[%s]]" % (article.wiki_url)
+                    line = line[:match.start()] + link + line[match.end():]
+
+                    offset += len(link) - len(name)
+
+                text[line_index] = line
+
+        self.ui.markdownEditor.setText('\n'.join(text))
 
     def cursor_changed(self, line, index):
         # Get the byte index of the cursor

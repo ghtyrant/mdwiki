@@ -246,6 +246,7 @@
              <addaction name="actionCommit"/>
              <addaction name="separator"/>
              <addaction name="actionAutoLink"/>
+             <addaction name="actionAutoLinkAll"/>
             </widget>
            </item>
            <item>
@@ -558,15 +559,30 @@
    </property>
   </action>
   <action name="actionAutoLink">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset resource="../rc/main.qrc">
-     <normaloff>:/icons/chain.png</normaloff>:/icons/chain.png</iconset>
+     <normaloff>:/icons/autolink.png</normaloff>:/icons/autolink.png</iconset>
    </property>
    <property name="text">
     <string>Auto Link</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+L</string>
+   </property>
+  </action>
+  <action name="actionAutoLinkAll">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../rc/main.qrc">
+     <normaloff>:/icons/autolink_all.png</normaloff>:/icons/autolink_all.png</iconset>
+   </property>
+   <property name="text">
+    <string>Auto Link All</string>
    </property>
   </action>
  </widget>

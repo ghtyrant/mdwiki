@@ -308,3 +308,16 @@ class Wiki:
 
     def find_article_by_name(self, name):
         return self.root.find_by_name(name)
+
+    def get_name_dict(self):
+        articles = {}
+
+        def _fill_dict(root, articles):
+            articles[root.name] = root
+
+            for child in root.children:
+                _fill_dict(child, articles)
+
+            return articles
+
+        return _fill_dict(self.root, articles)

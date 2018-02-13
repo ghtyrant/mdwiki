@@ -474,6 +474,8 @@ class WikiTreeMixin:
         menu.addSeparator()
         menu.addAction(self.ui.actionDeleteArticle)
 
+        # TODO Add action to insert link to this article in the current editor
+
         try:
             self.ui.actionEditArticle.triggered.disconnect()
             self.ui.actionDeleteArticle.triggered.disconnect()
